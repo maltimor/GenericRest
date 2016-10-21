@@ -56,7 +56,7 @@ Hay tres tipos de servicios: CRUD, PROCEDURE y FUNCTION, dependiendo del tipo de
   
     ![CRUD simple](http://www.subirimagenes.com/imagedata.php?url=http://s2.subirimagenes.com/otros/9649205crudsime.jpg)
     
-   * Ejemplo de sercicio CRUD complejo, en el cual se configuran las consultas
+   * Ejemplo de servicio CRUD complejo, en el cual se configuran las consultas
    
     ![CRUD complejo](http://www.subirimagenes.com/imagedata.php?url=http://s2.subirimagenes.com/otros/9649207crudcomejo.jpg)
     
