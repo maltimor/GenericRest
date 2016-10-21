@@ -168,16 +168,16 @@ NOTA: aquí la lista de ids puede ser incompleta, lo que permite actualizar elem
 
 ## *Otros servicios adicionales*
 
-## @GET ("/mapperinfotable/:table")
+### @GET ("/mapperinfotable/:table")
 
 Devuelve los metadatos del servicio: tipo, nombre, fields, keys, ....
 
 
-## @GET ("/mapperinfolist")
+### @GET ("/mapperinfolist")
 
 Devuelve una lista de los servicios desplegados
 
-## @GET ("/_inituser")
+### @GET ("/_inituser")
 
 Devuelve el objeto User de la llamada a UserDao.initUser.
 
@@ -185,13 +185,13 @@ Este método obtiene el login/id del usuario llamando a UserDao.getLogin, y le p
 
 La llamada a este método invalida la caché y actualiza los atributos/metadatos del usuario sin que tenga que volver a logearse.
 
-## @GET ("/_getuser")
+### @GET ("/_getuser")
 
 Devuelve el objeto User de la llamda a UserDao.getUser.
 
 Este método obtiene el login/id del usuario llamando a UserDao.getLogin, y le pasa como parámetro el nombre de la aplicación que tiene desplegado GenericRest.
 
-## *Sintaxis de fields*
+### *Sintaxis de fields*
 
 fields -> * | campo | fields ',' fields
 
