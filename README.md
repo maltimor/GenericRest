@@ -309,3 +309,32 @@ En GenericRest hay implementado un resolver:
   * GenericMapperSecurityTableResolverImpl: es el que dota de significado al campo SEC_INFO y define la sintaxis del valor (del par key=valor) y su semántica.
 
 Se pueden crear resolvers que implementen relaciones complejas de seguridad.
+
+## *Formato de la tabla G_SERVICES*
+
+Si se utiliza la clase GenericDatabaseInfo se espera que esta contenga, al menos, los siguientes campos: TYPE, TABLE_NAME, FINAL_TABLE, RESOLVER, FIELDS, KEYS, SEPARATOR, SEC_RESOLVER, SEC_INFO.
+
+Si, además, se utiliza como defaultResolver la clase BasicDatabaseResolver, es necesario que la tabla contenga estos otros campos: SELECT_VALUE, SELECT_FILTER, INSERT_VALUE, UPDATE_VALUE, DELETE_VALUE.
+
+Todos los campos deben ser del tipo VARCHAR2 con tamaño suficiente para contener toda la información.
+
+Un ejemplo de sql de puede ser:
+
+CREATE TABLE G_SERVICES 
+(
+  TABLE_NAME VARCHAR2(4000) NOT NULL 
+, TYPE VARCHAR2(4000) 
+, FINAL_TABLE VARCHAR2(4000) 
+, FIELDS VARCHAR2(4000) 
+, KEYS VARCHAR2(4000) 
+, SEPARATOR VARCHAR2(4000) 
+, SEC_INFO VARCHAR2(4000) 
+, RESOLVER VARCHAR2(4000) 
+, SEC_RESOLVER VARCHAR2(4000) 
+, SELECT_VALUE VARCHAR2(4000) 
+, SELECT_FILTER VARCHAR2(4000) 
+, INSERT_VALUE VARCHAR2(4000) 
+, UPDATE_VALUE VARCHAR2(4000) 
+, DELETE_VALUE VARCHAR2(4000) 
+);
+
