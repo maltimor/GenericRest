@@ -398,10 +398,15 @@ public class GenericService {
 		List<String> fields=new ArrayList<String>();
 		
 		if (lfields.equals("*")){
-			for (GenericMapperInfoColumn column : t.getFields()) if (!column.getType().endsWith("LOB")) fields.add(column.getName());
+			//for (GenericMapperInfoColumn column : t.getFields()) if (!column.getType().endsWith("LOB")) fields.add(column.getName());
+			for (GenericMapperInfoColumn column : t.getFields()) fields.add(column.getName().toUpperCase());
 		} else {
-			lfields = ","+lfields+",";
-			for (GenericMapperInfoColumn column : t.getFields()) if (lfields.contains(","+column.getName()+",")) fields.add(column.getName());
+			String[] arr=lfields.split(",");
+			for(int i=0;i<arr.length;i++){
+				for (GenericMapperInfoColumn column : t.getFields()) if (column.getName().toUpperCase().equals(arr[i].toUpperCase())){
+					fields.add(column.getName().toUpperCase());
+				}
+			}
 		}
 		return fields;
 	}

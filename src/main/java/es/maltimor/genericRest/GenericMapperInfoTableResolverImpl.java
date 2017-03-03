@@ -27,7 +27,7 @@ public class GenericMapperInfoTableResolverImpl implements GenericMapperInfoTabl
 		String colValues = "";
 		boolean first = true;
 		for(GenericMapperInfoColumn column : info.getFields()){
-			String key = column.getName();
+			String key = column.getName().toUpperCase();
 			if (data.containsKey(key) || column.getType().equals("S")){
 				if (!first) {
 					colNames+=",";
@@ -35,8 +35,12 @@ public class GenericMapperInfoTableResolverImpl implements GenericMapperInfoTabl
 				}
 				colNames+=key;
 				if (column.getType().equals("S")) colValues+=column.getSecuenceName()+".nextVal";		//caso de numero de secuencia  
-				else colValues+="#{data."+key+"}";
-				System.out.println("KEYTYPE="+column.getType()+" Key="+key);
+				else {
+					colValues+="#{data."+key;
+					if (column.getType().equals("BLOB")) colValues+=",jdbcType=BLOB";
+					else if (column.getType().equals("CLOB"))colValues+=",jdbcType=CLOB";
+					colValues+="}";
+				}
 				first=false;
 			}
 		}
@@ -54,23 +58,20 @@ public class GenericMapperInfoTableResolverImpl implements GenericMapperInfoTabl
 		boolean firstKey = true;
 
 		for(GenericMapperInfoColumn column : info.getFields()){
-			String key = column.getName();
+			String key = column.getName().toUpperCase();
 			if (data.containsKey(key)){
 				if (!firstSet) colSets+=",";
-				colSets+=key+"=#{data."+key+"}";
+				colSets+=key+"=#{data."+key;
+				if (column.getType().equals("BLOB")) colSets+=",jdbcType=BLOB";
+				else if (column.getType().equals("CLOB"))colSets+=",jdbcType=CLOB";
+				colSets+="}";
 				firstSet=false;
 			}
-//			if (keys.contains(key)){
-//				if (!firstKey) colKeys+=" AND ";
-//				colKeys+=key+"=#{data."+key+"}";
-//				firstKey=false;
-//			}
 		}
 		for(int i=0;i<keys.size();i++) {
 			colKeys+=keys.get(i)+"=#{id"+i+"}";
 			if (i<keys.size()-1) colKeys+=" AND ";
 		}
-
 		
 		String sql = "UPDATE "+table+" SET "+colSets+" WHERE "+colKeys;
 		return sql;

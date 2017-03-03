@@ -39,7 +39,7 @@ public class GenericMapperInfoTable {
 	}
 
 	public void setInfo(String info) throws Exception {
-		System.out.println("## GenericCrudMapperInfoTable:" + info);
+		//System.out.println("## GenericCrudMapperInfoTable:" + info);
 		String[] info_tokens = info.split("\\|");
 		int info_size=info_tokens.length;
 		String ID="";
@@ -157,7 +157,7 @@ public class GenericMapperInfoTable {
 				this.types.put(column.getName().toLowerCase(), column.getType());
 			}
 		}
-		System.out.println("## GenericCrudMapperInfoTable RES:" + this.toString());
+		//System.out.println("## GenericCrudMapperInfoTable RES:" + this.toString());
 	}
 	
 	public void setSecurity(String secInfo) throws Exception {

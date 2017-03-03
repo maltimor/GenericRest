@@ -2,6 +2,8 @@ package es.maltimor.genericRest;
 
 import java.sql.Blob;
 import java.sql.Clob;
+import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -103,6 +105,20 @@ public class GenericServiceDaoImpl implements GenericServiceDao {
 			params.put("ui", ui);
 			params.put("query", getQueryMap(ui));
 			List<Map<String, Object>> res = mapper.getAll(params);//user,infoTable.getTable(),infoTable,filter,limit,offset,orderby,order,fields);
+			
+			//TODO tratar los tipos de datos de salida! sobre todo los blob y clob convertirlos a algo
+			if (res!=null){
+				List<String> keys = new ArrayList<String>();
+				for(GenericMapperInfoColumn col:infoTable.getFields()){
+					if (col.getType().equals("BLOB")||col.getType().equals("CLOB")) keys.add(col.getName());
+				}
+				if (keys.size()>0){
+					for(Map<String,Object> map:res){
+						for(String key:keys) getLOB(map,key);
+					}
+				}
+			}
+			
 			System.out.println("****getALL: "+(System.currentTimeMillis()-startTime));
 			return res;
 		} catch (Exception e){
@@ -128,21 +144,7 @@ public class GenericServiceDaoImpl implements GenericServiceDao {
 			//TODO tratar los tipos de datos de salida! sobre todo los blob y clob convertirlos a algo
 			if (res!=null){
 				for(GenericMapperInfoColumn col:infoTable.getFields()){
-					if (col.getType().equals("BLOB")){
-						Object value = res.get(col.getName());
-						if (value!=null && value instanceof Blob){
-							Blob blob = (Blob) value;
-							byte[] buff= blob.getBytes(1,(int) blob.length());
-							res.put(col.getName(), buff);
-						}
-					} else if (col.getType().equals("CLOB")){
-						Object value = res.get(col.getName());
-						if (value!=null && value instanceof Clob){
-							Clob clob = (Clob) value;
-							String buff= clob.getSubString(1,(int) clob.length());
-							res.put(col.getName(), buff);
-						}
-					}
+					if (col.getType().equals("BLOB")||col.getType().equals("CLOB")) getLOB(res,col.getName());
 				}
 			}
 			System.out.println("****getById: "+(System.currentTimeMillis()-startTime));
@@ -151,7 +153,22 @@ public class GenericServiceDaoImpl implements GenericServiceDao {
 			throw new Exception(getMessage(e));
 		}
 	}
-
+	
+	private void getLOB(Map<String,Object> map,String key) throws Exception{
+		Object value = map.get(key);
+		if (value!=null) {
+			if (value instanceof Blob){
+				Blob blob = (Blob) value;
+				byte[] buff= blob.getBytes(1,(int) blob.length());
+				map.put(key, buff);
+			} else if (value instanceof Clob){
+				Clob clob = (Clob) value;
+				String buff= clob.getSubString(1,(int) clob.length());
+				map.put(key, buff);
+			}
+		}
+	}
+	
 	@Transactional(
 	        propagation = Propagation.REQUIRED,
 	        isolation = Isolation.DEFAULT,
@@ -179,7 +196,9 @@ public class GenericServiceDaoImpl implements GenericServiceDao {
 					if (column.getType().equals("S")) {
 						Map<String, Object> res = mapper.getSecuenceValue(column.getSecuenceName());		//caso de numero de secuencia
 						System.out.println("RESULTADO:"+res);
-						data.put(key, res.get("VALUE"));
+						Object value = res.get("VALUE");
+						if (value==null || value.equals("")) value = res.get("value");
+						if (value!=null && !value.equals("")) data.put(key, value);
 					}
 				}
 			}

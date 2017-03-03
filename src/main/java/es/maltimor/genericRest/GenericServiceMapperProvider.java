@@ -37,8 +37,9 @@ public class GenericServiceMapperProvider {
 		if (filter==null) filter="";
 		else filter = filter.replace("'", "''");
 		
-		String sql = "SELECT count(*) COUNT FROM ("+resolver.getSQL(user,table)+")";
-		if (driver.equals("mysql")) sql+=" t";
+//		String sql = "SELECT count(*) AS COUNT FROM ("+resolver.getSQL(user,table)+")";
+		String sql = "SELECT count(*) FROM ("+resolver.getSQL(user,table)+")";
+		if (driver.equals("mysql") || driver.equals("informix") || driver.equals("access")) sql+=" t";
 //		if (fields!=null && fields.size()>0 && !filter.equals("")){
 //			//sql += filtrosWhere(info, fields, filter);
 //			sql += " WHERE "+getQueryWhere(filter,info);
@@ -73,16 +74,16 @@ public class GenericServiceMapperProvider {
 		// TODO elimino los BLOB y CLOB AQUI y en esta llamada
 		if (lfields.equals("*")){
 			for (GenericMapperInfoColumn column : columns) {
-				if (!column.getType().endsWith("LOB")) {
-					fields.add(column.getName());
+//				if (!column.getType().endsWith("LOB")) {
+					fields.add(column.getName().toUpperCase());
 					types.add(column.getType());
-				}
+//				}
 			}
 		} else {
 			//Se supone que la lista de nombres viene separada por comas, como truco se inserta una coma al principio y a l final
-			lfields = ","+lfields+",";
+			lfields = (","+lfields+",").toUpperCase();
 			for (GenericMapperInfoColumn column : columns) {
-				String name = column.getName();
+				String name = column.getName().toUpperCase();
 				if (lfields.contains(","+name+",")) {
 					fields.add(name);
 					types.add(column.getType());
@@ -106,6 +107,8 @@ public class GenericServiceMapperProvider {
 		//permito que orderby y order sean una lista separada por comas
 		String orderClause=null;
 		if (orderby!=null && order!=null){
+			orderby=orderby.toUpperCase();
+			order=order.toUpperCase();
 			String[] ordersby=orderby.split(",");
 			String[] orders=order.split(",");
 			if (ordersby.length!=orders.length) throw new Exception("Diferente tamaño en la lista de ordenacion:"+orderby+"-"+order);
@@ -123,15 +126,22 @@ public class GenericServiceMapperProvider {
 		else filter = filter.replace("'", "''");
 
 		String sql = "";
-		if (driver.equals("mysql")){
+		if (driver.equals("mysql") || driver.equals("informix") || driver.equals("access")){
 			sql+= "SELECT ";
+			if (driver.equals("informix")) sql+=" SKIP "+(offset)+" LIMIT "+(limit)+" ";
+			if (driver.equals("access")) sql+=" TOP "+(limit)+" ";
 			if (fields!=null && fields.size()>0){
 				for(int i=0;i<fields.size();i++){
 					//AÑADIR CAMBIO DE DATO PARA FECHAS PARA ACOMODARLO A UN UNICO ESTANDAR YYYY-MM-DD HH:MM:SS
+					// TODO Gestion ferchas en informix falta añadir tambien el nombre del alias entre ""
 					String type=types.get(i);
-					if (type.equals("F")) sql+="DATE_FORMAT("+fields.get(i)+",'%Y-%m-%dT%H:%i:%s') "+fields.get(i);
-					else if (type.equals("D")) sql+="DATE_FORMAT("+fields.get(i)+",'%Y-%m-%d') "+fields.get(i);
-					else sql+=fields.get(i);
+					if (type.equals("F")) {
+						if (driver.equals("mysql") || driver.equals("informix")) sql+="DATE_FORMAT(t."+fields.get(i)+",'%Y-%m-%dT%H:%i:%s') AS "+fields.get(i);
+						else if (driver.equals("access")) sql+="FORMAT(t."+fields.get(i)+",'yyyy-mm-ddThh:nn:ss') AS "+fields.get(i);
+					} else if (type.equals("D")) {
+						if (driver.equals("mysql") || driver.equals("informix")) sql+="DATE_FORMAT(t."+fields.get(i)+",'%Y-%m-%d') AS "+fields.get(i);
+						else if (driver.equals("access")) sql+="FORMAT(t."+fields.get(i)+",'yyyy-mm-dd') AS "+fields.get(i);
+					} else sql+="t."+fields.get(i)+(driver.equals("informix")?" AS \""+fields.get(i).toUpperCase()+"\"":"");
 					if (i<fields.size()-1) sql+=", ";
 				}
 			}
@@ -145,16 +155,21 @@ public class GenericServiceMapperProvider {
 			actualFilter = resolver.getQueryWhere(user, table, info, filter, ui, query, "getAll", actualFilter);
 			if (!actualFilter.equals("")) sql+= " WHERE "+actualFilter;
 
-			if (orderClause!=null) sql+=" ORDER BY "+orderClause;
-			sql+=" LIMIT "+(offset)+" , "+(limit);
+			if (driver.equals("mysql")){
+				if (orderClause!=null) sql+=" ORDER BY "+orderClause;
+				sql+=" LIMIT "+(offset)+" , "+(limit);
+			} else {
+				//informix
+				if (orderClause!=null) sql+=" ORDER BY "+orderClause.toLowerCase();
+			}
 		} else {
 			sql+= "SELECT * FROM (SELECT ";
 			if (fields!=null && fields.size()>0){
 				for(int i=0;i<fields.size();i++){
 					//AÑADIR CAMBIO DE DATO PARA FECHAS PARA ACOMODARLO A UN UNICO ESTANDAR YYYY-MM-DD HH:MM:SS
 					String type=types.get(i);
-					if (type.equals("F")) sql+="TO_CHAR("+fields.get(i)+",'YYYY-MM-DD\"T\"HH24:MI:SS') "+fields.get(i);
-					else if (type.equals("D")) sql+="TO_CHAR("+fields.get(i)+",'YYYY-MM-DD') "+fields.get(i);
+					if (type.equals("F")) sql+="TO_CHAR("+fields.get(i)+",'YYYY-MM-DD\"T\"HH24:MI:SS') AS "+fields.get(i);
+					else if (type.equals("D")) sql+="TO_CHAR("+fields.get(i)+",'YYYY-MM-DD') AS "+fields.get(i);
 					else sql+=fields.get(i);
 					sql+=", ";
 				}
@@ -195,31 +210,36 @@ public class GenericServiceMapperProvider {
 		List<GenericMapperInfoColumn> columns =  info.getFields();
 		//incorporo aqui la lista de campos que se van a exportar
 		for (GenericMapperInfoColumn column : columns) {
-			fields.add(column.getName());
+			fields.add(column.getName().toUpperCase());
 			types.add(column.getType());
 		}
 
 		String sql = "SELECT ";
-		if (driver.equals("mysql")){
+		if (driver.equals("mysql") || driver.equals("informix") || driver.equals("access")){
 			for(int i=0;i<fields.size();i++){
+				//TODO tratar fechas añadir "" en informix
 				String type=types.get(i);
-				if (type.equals("F")) sql+="DATE_FORMAT("+fields.get(i)+",'%Y-%m-%dT%H:%i:%s') "+fields.get(i);
-				else if (type.equals("D")) sql+="DATE_FORMAT("+fields.get(i)+",'%Y-%m-%d') "+fields.get(i);
-				else sql+=fields.get(i);
+				if (type.equals("F")) {
+					if (driver.equals("mysql") || driver.equals("informix")) sql+="DATE_FORMAT(t."+fields.get(i)+",'%Y-%m-%dT%H:%i:%s') AS "+fields.get(i);
+					else if (driver.equals("access")) sql+="FORMAT(t."+fields.get(i)+",'yyyy-mm-ddThh:nn:ss') AS "+fields.get(i);
+				} else if (type.equals("D")) {
+					if (driver.equals("mysql") || driver.equals("informix")) sql+="DATE_FORMAT(t."+fields.get(i)+",'%Y-%m-%d') AS "+fields.get(i);
+					else if (driver.equals("access")) sql+="FORMAT(t."+fields.get(i)+",'yyyy-mm-dd') AS "+fields.get(i);
+				} else sql+="t."+fields.get(i)+(driver.equals("informix")?" AS \""+fields.get(i).toUpperCase()+"\"":"");
 				if (i<fields.size()-1) sql+=", ";
 			}
 		} else {
 			for(int i=0;i<fields.size();i++){
 				String type=types.get(i);
-				if (type.equals("F")) sql+="TO_CHAR("+fields.get(i)+",'YYYY-MM-DD\"T\"HH24:MI:SS') "+fields.get(i);
-				else if (type.equals("D")) sql+="TO_CHAR("+fields.get(i)+",'YYYY-MM-DD') "+fields.get(i);
+				if (type.equals("F")) sql+="TO_CHAR("+fields.get(i)+",'YYYY-MM-DD\"T\"HH24:MI:SS') AS "+fields.get(i);
+				else if (type.equals("D")) sql+="TO_CHAR("+fields.get(i)+",'YYYY-MM-DD') AS "+fields.get(i);
 				else sql+=fields.get(i);
 				if (i<fields.size()-1) sql+=", ";
 			}
 		}
 		sql+=" FROM ("+resolver.getSQL(user,table)+")";
 		
-		if (driver.equals("mysql")) sql+=" t";
+		if (driver.equals("mysql") || driver.equals("informix") || driver.equals("access")) sql+=" t";
 		sql+=" WHERE ";
 		for(int i=0;i<keys.size();i++) {
 			//TODO keys de tipo fecha
@@ -320,7 +340,7 @@ public class GenericServiceMapperProvider {
 	//secuence
 	public String getSecuenceValue(String secuence){
 		//String secuence = (String) params.get("secuence");
-		String res = "SELECT "+secuence+".CURRVAL VALUE FROM DUAL";
+		String res = "SELECT "+secuence+".CURRVAL AS VALUE FROM DUAL";
 		System.out.println("SECUENCE:"+secuence);
 		return res;
 	}
@@ -450,7 +470,7 @@ public class GenericServiceMapperProvider {
 			//por defecto el tipo de datos es texto
 			int type=TYPE_TEXT;
 			if (cad.startsWith("[")){
-				String[] aux = cad.substring(1).split("\\|");
+				String[] aux = cad.substring(1).split("\\|",3);
 				String key = aux[0];
 				String op = aux[1];
 				String valor = (aux.length>2)? aux[2] : "";
@@ -459,15 +479,17 @@ public class GenericServiceMapperProvider {
 				
 				//aqui deberia recuperar el tipo de dato segun la columna
 				GenericMapperInfoColumn col = null;
-				if (!key.equals("NULL")) col = map.get(key.toLowerCase());
-				if (col!=null) {
-					String strType = col.getType().toUpperCase();
-					if (strType.equals("T")) type = TYPE_TEXT;
-					else if (strType.equals("N")) type = TYPE_NUMBER;
-					else if (strType.equals("F")) type = TYPE_DATE;
-					else if (strType.equals("D")) type = TYPE_DATE;
-					else type = TYPE_TEXT;
-					//System.out.println("COL:"+col);
+				if (!key.equals("NULL")) {
+					col = map.get(key.toLowerCase());
+					if (col!=null) {
+						String strType = col.getType().toUpperCase();
+						if (strType.equals("T")) type = TYPE_TEXT;
+						else if (strType.equals("N")) type = TYPE_NUMBER;
+						else if (strType.equals("F")) type = TYPE_DATE;
+						else if (strType.equals("D")) type = TYPE_DATE;
+						else type = TYPE_TEXT;
+						//System.out.println("COL:"+col);
+					} else key = "#{"+key.replaceAll("\\{", "").replaceAll("\\}", "")+"}";	//evita sql injection?
 				}
 
 				//tengo en cuenta que por defecto todos los operadores añaden % al principio y al final
@@ -508,6 +530,11 @@ public class GenericServiceMapperProvider {
 				} else if (op.equals("=>")){
 					//aplico la transformacion a valor en funcion de su tipo de datos
 					if (!valorKey) valor = "'"+valor.replace("'","''")+"'";
+				} else if (op.equals(" IS ")){
+					//para esta operacion solo se permmite NULL y NOT NULL
+					if (valor.equalsIgnoreCase("NULL") || valor.equalsIgnoreCase("NOT NULL")){
+						valor = valor.toUpperCase();
+					} else if (!valorKey) valor = "'"+valor.replace("'","''")+"'";
 				} else {
 					//aplico la transformacion a valor en funcion de su tipo de datos
 					if (!valorKey&&((type==TYPE_TEXT)||(type==TYPE_DATE))) valor = "'"+valor.replace("'","''")+"'";
@@ -530,8 +557,10 @@ public class GenericServiceMapperProvider {
 							//si el valor contiene comodin, en vez de = pongo like
 							valor = "'%"+valor.replace("'","''")+"%'";
 							valor = valor.toLowerCase();
-							if (driver.equals("mysql")){
+							if (driver.equals("mysql") || driver.equals("informix")){
 								res+=" OR ( LOWER("+cd.getName()+") LIKE  "+valor+" ) ";
+							} else if (driver.equals("access")){
+								res+=" OR ( LCASE("+cd.getName()+") LIKE  "+valor+" ) ";
 							} else {
 								res+=" OR ( LOWER(CONVERT("+cd.getName()+",'US7ASCII')) LIKE CONVERT( "+valor+" ,'US7ASCII') ) ";
 							}
@@ -539,8 +568,10 @@ public class GenericServiceMapperProvider {
 							//si valor es un numero incluyo esta columna
 							try{
 								double a = Double.parseDouble(valor);
-								if (driver.equals("mysql")){
+								if (driver.equals("mysql") || driver.equals("informix")){
 									res+=" OR ( LOWER("+cd.getName()+") = "+a+" ) ";
+								} else if (driver.equals("access")){
+									res+=" OR ( LCASE("+cd.getName()+") = "+a+" ) ";
 								} else {
 									res+=" OR ( LOWER(CONVERT("+cd.getName()+",'US7ASCII')) = "+a+" ) ";
 								}
@@ -556,8 +587,11 @@ public class GenericServiceMapperProvider {
 					//hay que escapar datos
 					//TODO si col==null lo añado aqui?
 					if ((col!=null) && (op.equals(" LIKE "))) {
-						if (driver.equals("mysql")){
+						if (driver.equals("mysql") || driver.equals("informix")){
 							key = "LOWER("+col.getName()+")";
+							valor = valor.toLowerCase();
+						} else if (driver.equals("access")){
+							key = "LCASE("+col.getName()+")";
 							valor = valor.toLowerCase();
 						} else {
 							key = "LOWER(CONVERT("+col.getName()+",'US7ASCII'))";
@@ -565,6 +599,7 @@ public class GenericServiceMapperProvider {
 						}
 						res+= key+op+valor;
 					} else if (op.equals("=>")){
+						//TODO en informix esto no esta soportado
 						op = " IN ";
 						valor = "(SELECT TRIM(REGEXP_SUBSTR("+valor+", '[^,]+', 1, LEVELS.COLUMN_VALUE)) "
 								+ " FROM TABLE(CAST(MULTISET(SELECT LEVEL FROM DUAL "

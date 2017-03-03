@@ -88,6 +88,7 @@ public class GenericMapperInfo {
 	}
 	
 	private void setInfoInternal(String info) throws Exception {
+		System.out.println("SetinfoInternal:->" + info+"<-");
 		this.info = info;
 		String[] tables = info.split("\n");
 		for (int j = 0; j < tables.length; j++) {
@@ -108,7 +109,7 @@ public class GenericMapperInfo {
 				data.put(tableData.getVirtualTable().toLowerCase(), tableData);
 			}
 		}
-		System.out.println("## GenericCrudMapperInfo RES:" + this.toString());
+		System.out.println("## GenericCrudMapperInfo.setInfoInternal RES:" + this.toString());
 		comprobador();
 	}
 	
@@ -126,6 +127,7 @@ public class GenericMapperInfo {
 	}
 	
 	private void setSecurityInternal(String security) throws Exception {
+		System.out.println("SetSecurityInternal:->" + security+"<-");
 		this.security = security;
 		String[] tables = security.split("\n");
 		for (int j = 0; j < tables.length; j++) {
@@ -148,7 +150,7 @@ public class GenericMapperInfo {
 				} else data.put(tableData.getVirtualTable().toLowerCase(), tableData);
 			}
 		}
-		System.out.println("## GenericCrudMapperInfo RES:" + this.toString());
+		System.out.println("## GenericCrudMapperInfo.setSecurityInternal RES:" + this.toString());
 	}
 	
 	/* Esta operacion recorre todos los elementos de la tabla y por cada elemento compara sus columnas con las columnas recibidas de la base de datos
@@ -315,14 +317,17 @@ public class GenericMapperInfo {
 	}
 
 	private String convertirTipo(String tipo) {
+		tipo=tipo.toUpperCase();
 		if (tipo.equals("CHAR") || tipo.equals("VARCHAR2") || (tipo.equals("VARCHAR"))) tipo = "T";
-		if (tipo.equals("DATE")) tipo = "F";
-		if (tipo.equals("TIMESTAMP")) tipo = "F";
-		if (tipo.equals("DATETIME")) tipo = "F";
-		if (tipo.equals("LONG") || tipo.equals("LONG RAW") || tipo.equals("NUMBER")) tipo = "N";
-		if (tipo.equals("DECIMAL")) tipo = "N";
-		if (tipo.equals("INT")) tipo = "N";
-		if (tipo.equals("DOUBLE")) tipo = "N";
+		else if (tipo.equals("DATE")) tipo = "F";
+		else if (tipo.equals("TIMESTAMP")) tipo = "F";
+		else if (tipo.equals("DATETIME")) tipo = "F";
+		else if (tipo.equals("LONG") || tipo.equals("LONG RAW") || tipo.equals("NUMBER")) tipo = "N";
+		else if (tipo.equals("DECIMAL")) tipo = "N";
+		else if (tipo.equals("INT")) tipo = "N";
+		else if (tipo.equals("DOUBLE")) tipo = "N";
+		//else if (tipo.equals("CLOB")) tipo = "T";			// TODO Crear un tipo C
+		else System.out.println("WARNING: Convertir Tipo NO RECONOCIDO:"+tipo);
 		return tipo;
 	}
 	

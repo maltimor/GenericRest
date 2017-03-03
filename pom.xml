@@ -3,7 +3,7 @@
 	<parent>
 		<groupId>es.maltimor.genericProject</groupId>
 		<artifactId>genericProject</artifactId>
-		<version>1.0.0-RELEASE</version>
+		<version>1.0.1-RELEASE</version>
 	</parent>
 	<artifactId>genericRest</artifactId>
 	<packaging>jar</packaging>

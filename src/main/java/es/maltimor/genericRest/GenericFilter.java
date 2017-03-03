@@ -76,6 +76,10 @@ public class GenericFilter {
 						}
 					}
 					estado = 3;
+				} else if (pos+4<len && text.substring(pos,pos+4).equalsIgnoreCase(" IS ")){
+					pos+=3;//1 menos que lo necesario ya s eincrementa despues
+					op += " IS ";
+					estado = 3;
 				/*} else if (pos+4<len && text.substring(pos,pos+4).equals(" IN ")){
 					pos+=3;//1 menos que lo necesario ya s eincrementa despues
 					op += " IN ";

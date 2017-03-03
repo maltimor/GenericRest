@@ -10,6 +10,8 @@ import java.util.TimerTask;
 public class GenericDatabaseInfo {//implements Runnable {
 	private GenericDatabaseMapper mapper;
 	private String resourceTable;
+	private boolean columnNamesInUpperCase=true;
+
 //	private ThreadPoolTaskScheduler threadPoolTaskScheduler;
 	
 /*	public void run() {
@@ -26,21 +28,34 @@ public class GenericDatabaseInfo {//implements Runnable {
 		Map<String,Object> map = new HashMap<String,Object>();
 		map.put("resourceTable", resourceTable);
 		List<Map<String,Object>> ldoc = mapper.getRows(map);
+		System.out.println("getInfo:"+ldoc);
 		for(Map<String,Object> doc:ldoc){
-			String type=(String) doc.get("TYPE");
-			String tableName=(String) doc.get("TABLE_NAME");
-			String finalTable=(String) doc.get("FINAL_TABLE");
-			String resolver=(String) doc.get("RESOLVER");
-			String fields=(String) doc.get("FIELDS");
-			String keys=(String) doc.get("KEYS");
-			String sep=(String) doc.get("SEPARATOR");
-			res+=type!=null?getType(type):"";
+			String type,tableName,finalTable,resolver,fields,keys,sep;
+			if (columnNamesInUpperCase){
+				type=(String) doc.get("TYPE");
+				tableName=(String) doc.get("TABLE_NAME");
+				finalTable=(String) doc.get("FINAL_TABLE");
+				resolver=(String) doc.get("RESOLVER");
+				fields=(String) doc.get("FIELDS");
+				keys=(String) doc.get("KEYS");
+				sep=(String) doc.get("SEPARATOR");
+			} else {
+				type=(String) doc.get("type");
+				tableName=(String) doc.get("table_name");
+				finalTable=(String) doc.get("final_table");
+				resolver=(String) doc.get("resolver");
+				fields=(String) doc.get("fields");
+				keys=(String) doc.get("keys");
+				sep=(String) doc.get("separator");
+			}
+	
+			res+=isNotNull(type)?getType(type):"";
 			res+=tableName;
-			res+=finalTable!=null?":"+finalTable:"";
-			res+=resolver!=null?"@"+resolver:defaultResolver!=null?"@"+defaultResolver:"";
+			res+=isNotNull(finalTable)?":"+finalTable:"";
+			res+=isNotNull(resolver)?"@"+resolver:isNotNull(defaultResolver)?"@"+defaultResolver:"";
 			res+="|"+fields;
 			res+="|"+keys;
-			res+=(sep!=null?"|"+sep:"");
+			res+=isNotNull(sep)?"|"+sep:"";
 			res+="\n";
 		}
 		System.out.println("GET_INFO:"+res);
@@ -53,13 +68,20 @@ public class GenericDatabaseInfo {//implements Runnable {
 		map.put("resourceTable", resourceTable);
 		List<Map<String,Object>> ldoc = mapper.getRows(map);
 		for(Map<String,Object> doc:ldoc){
-			String tableName=(String) doc.get("TABLE_NAME");
-			String secResolver=(String) doc.get("SEC_RESOLVER");
-			String secInfo=(String) doc.get("SEC_INFO");
+			String tableName,secResolver,secInfo;
+			if (columnNamesInUpperCase){
+				tableName=(String) doc.get("TABLE_NAME");
+				secResolver=(String) doc.get("SEC_RESOLVER");
+				secInfo=(String) doc.get("SEC_INFO");				
+			} else {
+				tableName=(String) doc.get("table_name");
+				secResolver=(String) doc.get("sec_resolver");
+				secInfo=(String) doc.get("sec_info");
+			}
 			//TODO ver que hacer en caso de que sec_info==NULL
-			if (secInfo!=null){
+			if (isNotNull(secInfo)){
 				res+=tableName;
-				res+=secResolver!=null?"@"+secResolver:defaultSecResolver!=null?"@"+defaultSecResolver:"";
+				res+=isNotNull(secResolver)?"@"+secResolver:isNotNull(defaultSecResolver)?"@"+defaultSecResolver:"";
 				res+="|"+secInfo+"\n";
 			}
 		}
@@ -67,6 +89,10 @@ public class GenericDatabaseInfo {//implements Runnable {
 		return res;
 	}
 	
+	private boolean isNotNull(Object aux){
+		return (aux!=null && !aux.equals(""));
+	}
+
 	private String getType(String type){
 		if (type.equals("FUNCTION")) return "=";
 		else if (type.equals("PROCEDURE")) return "^";
@@ -102,5 +128,11 @@ public class GenericDatabaseInfo {//implements Runnable {
 	}
 	public void setDefaultSecResolver(String defaultSecResolver) {
 		this.defaultSecResolver = defaultSecResolver;
+	}
+	public boolean isColumnNamesInUpperCase() {
+		return columnNamesInUpperCase;
+	}
+	public void setColumnNamesInUpperCase(boolean columnNamesInUpperCase) {
+		this.columnNamesInUpperCase = columnNamesInUpperCase;
 	}
 }

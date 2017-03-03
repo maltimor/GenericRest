@@ -15,14 +15,16 @@ import es.maltimor.genericUser.User;
 public class BasicDatabaseResolver extends GenericMapperInfoTableResolverImpl {
 	private BasicDatabaseMapper mapper;
 	private String resourceTable;
-
+	private boolean columnNamesInUpperCase=true;
+	
 	public String getTestSQL(String table) {
 		Map<String,Object> map=new HashMap<String,Object>();
 		map.put("resourceTable", resourceTable);
 		map.put("table", table);
+		String fieldName = columnNamesInUpperCase?"SELECT_VALUE":"select_value";
 		List<Map<String,Object>> ldoc=mapper.getSQL(map);
-		if (ldoc.size()>0&&ldoc.get(0).containsKey("SELECT_VALUE")){
-			String sql = (String) ldoc.get(0).get("SELECT_VALUE");
+		if (ldoc.size()>0&&isNotNull(ldoc.get(0).get(fieldName))){
+			String sql = (String) ldoc.get(0).get(fieldName);
 			sql = "SELECT T.* FROM ("+sql+") T WHERE 1=0";
 			return sql;
 		} else return super.getTestSQL(table);
@@ -32,11 +34,13 @@ public class BasicDatabaseResolver extends GenericMapperInfoTableResolverImpl {
 		Map<String,Object> map=new HashMap<String,Object>();
 		map.put("resourceTable", resourceTable);
 		map.put("table", table);
+		String fieldName = columnNamesInUpperCase?"SELECT_VALUE":"select_value";
+		String filterName = columnNamesInUpperCase?"SELECT_FILTER":"select_filter";
 		List<Map<String,Object>> ldoc=mapper.getSQL(map);
-		if (ldoc.size()>0&&ldoc.get(0).containsKey("SELECT_VALUE")){
-			String sql = (String) ldoc.get(0).get("SELECT_VALUE");
-			String where = (String) ldoc.get(0).get("SELECT_FILTER");
-			sql = (where!=null)? sql + " " + where : sql;
+		if (ldoc.size()>0&&isNotNull(ldoc.get(0).get(fieldName))){
+			String sql = (String) ldoc.get(0).get(fieldName);
+			String where = (String) ldoc.get(0).get(filterName);
+			sql = isNotNull(where)? sql + " " + where : sql;
 			return sql;
 		} else return super.getSQL(user, table);
 	}
@@ -49,9 +53,10 @@ public class BasicDatabaseResolver extends GenericMapperInfoTableResolverImpl {
 		Map<String,Object> map=new HashMap<String,Object>();
 		map.put("resourceTable", resourceTable);
 		map.put("table", table);
+		String fieldName = columnNamesInUpperCase?"INSERT_VALUE":"insert_value";
 		List<Map<String,Object>> ldoc=mapper.getSQL(map);
-		if (ldoc.size()>0&&ldoc.get(0).containsKey("INSERT_VALUE")){
-			String sql = (String) ldoc.get(0).get("INSERT_VALUE");
+		if (ldoc.size()>0&&isNotNull(ldoc.get(0).get(fieldName))){
+			String sql = (String) ldoc.get(0).get(fieldName);
 			return sql;
 		} else return super.getInsert(user, table, info, data);
 	}
@@ -60,9 +65,10 @@ public class BasicDatabaseResolver extends GenericMapperInfoTableResolverImpl {
 		Map<String,Object> map=new HashMap<String,Object>();
 		map.put("resourceTable", resourceTable);
 		map.put("table", table);
+		String fieldName = columnNamesInUpperCase?"UPDATE_VALUE":"update_value";
 		List<Map<String,Object>> ldoc=mapper.getSQL(map);
-		if (ldoc.size()>0&&ldoc.get(0).containsKey("UPDATE_VALUE")){
-			String sql = (String) ldoc.get(0).get("UPDATE_VALUE");
+		if (ldoc.size()>0&&isNotNull(ldoc.get(0).get(fieldName))){
+			String sql = (String) ldoc.get(0).get(fieldName);
 			return sql;
 		} else return super.getUpdate(user, table, info, id, data);
 	}
@@ -71,9 +77,10 @@ public class BasicDatabaseResolver extends GenericMapperInfoTableResolverImpl {
 		Map<String,Object> map=new HashMap<String,Object>();
 		map.put("resourceTable", resourceTable);
 		map.put("table", table);
+		String fieldName = columnNamesInUpperCase?"DELETE_VALUE":"delete_value";
 		List<Map<String,Object>> ldoc=mapper.getSQL(map);
-		if (ldoc.size()>0&&ldoc.get(0).containsKey("DELETE_VALUE")){
-			String sql = (String) ldoc.get(0).get("DELETE_VALUE");
+		if (ldoc.size()>0&&isNotNull(ldoc.get(0).get(fieldName))){
+			String sql = (String) ldoc.get(0).get(fieldName);
 			return sql;
 		} else return super.getDelete(user, table, info, id);
 	}
@@ -84,16 +91,22 @@ public class BasicDatabaseResolver extends GenericMapperInfoTableResolverImpl {
 		Map<String,Object> map=new HashMap<String,Object>();
 		map.put("resourceTable", resourceTable);
 		map.put("table", table);
+		String fieldName = columnNamesInUpperCase?"SELECT_VALUE":"select_value";
+		String typeName = columnNamesInUpperCase?"TYPE":"type";
 		List<Map<String,Object>> ldoc=mapper.getSQL(map);
 		if (ldoc.size()>0){
 			Map<String,Object> doc=ldoc.get(0);
-			if (doc.get("TYPE")!=null){
-				System.out.println("EJECUTAR:"+doc.get("SELECT_VALUE"));
-				return (String) doc.get("SELECT_VALUE");
+			if (isNotNull(doc.get(typeName))){
+				System.out.println("EJECUTAR:"+doc.get(fieldName));
+				return (String) doc.get(fieldName);
 			}
 		}
 		System.out.println("NO HAY DATOS");
 		return super.getExecute(user, table, info, data);
+	}
+	
+	private boolean isNotNull(Object object){
+		return (object!=null && !object.equals(""));
 	}
 
 	public BasicDatabaseMapper getMapper() {
@@ -107,5 +120,11 @@ public class BasicDatabaseResolver extends GenericMapperInfoTableResolverImpl {
 	}
 	public void setResourceTable(String resourceTable) {
 		this.resourceTable = resourceTable;
+	}
+	public boolean isColumnNamesInUpperCase() {
+		return columnNamesInUpperCase;
+	}
+	public void setColumnNamesInUpperCase(boolean columnNamesInUpperCase) {
+		this.columnNamesInUpperCase = columnNamesInUpperCase;
 	}
 }
