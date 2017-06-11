@@ -10,23 +10,23 @@ public class GenericMapperSecurityTableResolverImpl implements GenericMapperSecu
 	private boolean defaultResponse=false;
 
 	public boolean canSelect(User user, String table,GenericMapperInfoTable info, String filter) {
-		System.out.println("GenericCrudMapperSecurityTableResolverImpl.canSelect: "+user.toString());
+		//System.out.println("GenericCrudMapperSecurityTableResolverImpl.canSelect: "+user.toString());
 		if (info.getActionRoles().containsKey("S")){
 			//obtengo un map con los atributos
 			Map<String,String> dicc = getDiccionario(user,table,null,null);
 			
 			//recorro la lista de roles que pueden hacer el select
 			List<String> roles = info.getActionRoles().get("S"); 
-			System.out.println("Hay "+roles.size()+" roles definidos.");
+			//System.out.println("Hay "+roles.size()+" roles definidos.");
 			for(String rol:roles){
-				System.out.println(rol+"?");
+				//System.out.println(rol+"?");
 				if (canDo(rol,dicc,user)) return true;
 				//if (user.hasRol(rol)) return true;
 			}
-			System.out.println("FALSE1");
+			//System.out.println("FALSE1");
 			return false;
 		}
-		System.out.println("???->"+defaultResponse);
+		//System.out.println("???->"+defaultResponse);
 		return defaultResponse;
 	}
 
@@ -121,13 +121,13 @@ public class GenericMapperSecurityTableResolverImpl implements GenericMapperSecu
 		if (lst==null) return false;
 		if (lst.get(0).equals(GenericFilter.ERROR)) return false;
 		
-		System.out.println(dicc);
+		//System.out.println(dicc);
 		
 		boolean res=false;
 		boolean first=true;
 		int opBool=0;			//0=null, 1=AND, 2=OR
 		for(String cad:lst){
-			System.out.println("*"+cad+"     RES="+res);
+			//System.out.println("*"+cad+"     RES="+res);
 			if (cad.startsWith("[")){
 				String[] aux = cad.substring(1).split("\\|");
 				String key = aux[0];
@@ -148,19 +148,19 @@ public class GenericMapperSecurityTableResolverImpl implements GenericMapperSecu
 					} else if (op.equals("=>")){	//key in lista (separada por comas)
 						act=(valor.contains(","+key+","));
 					} else {
-						System.out.println("*** ERROR *** EXPRESION MAL CONSTRUIDA: "+cad);
+						//System.out.println("*** ERROR *** EXPRESION MAL CONSTRUIDA: "+cad);
 						return false;
 					}
 				}
 				
-				System.out.println("ACT="+act+"   key="+key+" OP="+op+" valor="+valor);
+				//System.out.println("ACT="+act+"   key="+key+" OP="+op+" valor="+valor);
 				
 				if (first){ 
 					res=act;
 					first=false;
 				} else if (opBool==0){
 					//esto es un error creo
-					System.out.println("*** ERROR *** EXPRESION MAL CONSTRUIDA: "+cad);
+					//System.out.println("*** ERROR *** EXPRESION MAL CONSTRUIDA: "+cad);
 					return false;
 				} else {
 					//res!=null,op!=null,act
@@ -171,21 +171,21 @@ public class GenericMapperSecurityTableResolverImpl implements GenericMapperSecu
 					
 				opBool=0;
 				
-				System.out.println("RES="+res);
+				//System.out.println("RES="+res);
 
 			} else {
 				if (cad.equals("&")) opBool=1;
 				else if (cad.equals("|")) opBool=2;
 				else {
 					//esto es un error
-					System.out.println("*** ERROR *** EXPRESION MAL CONSTRUIDA: "+cad);
+					//System.out.println("*** ERROR *** EXPRESION MAL CONSTRUIDA: "+cad);
 					return false;
 				}
 			}
 				
 		}
 
-		System.out.println("RESFINAL="+res);
+		//System.out.println("RESFINAL="+res);
 		
 		return res;
 	}

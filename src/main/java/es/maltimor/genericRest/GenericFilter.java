@@ -17,7 +17,7 @@ public class GenericFilter {
 
 		// reemplazo AND Y OR por & y |
 		text = text.replace(" AND ", "&").replace(" OR ", "|");
-		System.out.println("SEARCH=" + text);
+		//System.out.println("SEARCH=" + text);
 
 		// analizo sintacticamente la cadena
 		char[] buff = text.toCharArray();
@@ -121,7 +121,7 @@ public class GenericFilter {
 		if (estado != 0 && estado!=3){
 			lst.clear();
 			lst.add(GenericFilter.ERROR);
-			System.out.println(GenericFilter.ERROR);
+			//System.out.println(GenericFilter.ERROR);
 		} else if (estado == 3) {
 			// finalizo este caso especial
 			// System.out.println("PUSH_END= key="+key+" valor="+valor+" op="+op);

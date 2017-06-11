@@ -6,13 +6,26 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import org.apache.ibatis.builder.SqlSourceBuilder;
+import org.apache.ibatis.executor.ErrorContext;
+import org.apache.ibatis.mapping.MappedStatement;
+import org.apache.ibatis.mapping.MappedStatement.Builder;
+import org.apache.ibatis.mapping.SqlCommandType;
+import org.apache.ibatis.mapping.SqlSource;
+import org.apache.ibatis.session.Configuration;
+import org.apache.ibatis.session.ResultHandler;
+import org.apache.ibatis.session.SqlSession;
+import org.apache.ibatis.session.SqlSessionFactory;
 import org.springframework.context.ApplicationContext;
 
+import es.maltimor.genericUser.User;
 import es.maltimor.springUtils.ContextAware;
 import es.maltimor.webUtils.JDBCBridge;
 
@@ -33,6 +46,30 @@ public class GenericMapperInfo {
 	//variables internas para guardar el estado inicial de info y security
 	private String _infoOrg;
 	private String _securityOrg;
+	
+	//mapper para ralizar el test de comprobacion y de metadatos
+	private GenericMapperInfoMapper mapper;
+	private SqlSessionFactory sqlSessionFactory;
+
+	public SqlSessionFactory getSqlSessionFactory() {
+		return sqlSessionFactory;
+	}
+
+
+	public void setSqlSessionFactory(SqlSessionFactory sqlSessionFactory) {
+		this.sqlSessionFactory = sqlSessionFactory;
+	}
+
+
+	public GenericMapperInfoMapper getMapper() {
+		return mapper;
+	}
+
+
+	public void setMapper(GenericMapperInfoMapper mapper) {
+		this.mapper = mapper;
+	}
+
 
 	public GenericMapperInfo() {
 		this.context = ContextAware.getContext();
@@ -76,19 +113,19 @@ public class GenericMapperInfo {
 	// este metodo es el que se usara para simplificar la entrada de datos desde
 	// spring
 	public void setInfo(String info) throws Exception {
-		System.out.println("## GenericCrudMapperInfo:" + info);
+		//System.out.println("## GenericCrudMapperInfo:" + info);
 		_infoOrg = info;
 		//justo en este momento, si dbInfo tiene algo lo anexo aqui
 		if (dbInfo!=null) {
 			info=info.trim()+"\n"+dbInfo.getInfo();
 			info=info.trim();
-			System.out.println("DBInfo:" + info);
+			//System.out.println("DBInfo:" + info);
 		}
 		setInfoInternal(info);
 	}
 	
 	private void setInfoInternal(String info) throws Exception {
-		System.out.println("SetinfoInternal:->" + info+"<-");
+		//System.out.println("SetinfoInternal:->" + info+"<-");
 		this.info = info;
 		String[] tables = info.split("\n");
 		for (int j = 0; j < tables.length; j++) {
@@ -109,25 +146,25 @@ public class GenericMapperInfo {
 				data.put(tableData.getVirtualTable().toLowerCase(), tableData);
 			}
 		}
-		System.out.println("## GenericCrudMapperInfo.setInfoInternal RES:" + this.toString());
+		//System.out.println("## GenericCrudMapperInfo.setInfoInternal RES:" + this.toString());
 		comprobador();
 	}
 	
 	//este metodo se encarga de la definicion de la seguridad
 	public void setSecurity(String security) throws Exception{
-		System.out.println("## GenericCrudMapperInfo.SetSecurity:" + security);
+		//System.out.println("## GenericCrudMapperInfo.SetSecurity:" + security);
 		_securityOrg = security;
 		//justo en este momento, si dbInfo tiene algo lo anexo aqui
 		if (dbInfo!=null) {
 			security=security.trim()+"\n"+dbInfo.getSecurity();
 			security=security.trim();
-			System.out.println("DBInfo:" + security);
+			//System.out.println("DBInfo:" + security);
 		}
 		setSecurityInternal(security);
 	}
 	
 	private void setSecurityInternal(String security) throws Exception {
-		System.out.println("SetSecurityInternal:->" + security+"<-");
+		//System.out.println("SetSecurityInternal:->" + security+"<-");
 		this.security = security;
 		String[] tables = security.split("\n");
 		for (int j = 0; j < tables.length; j++) {
@@ -150,7 +187,7 @@ public class GenericMapperInfo {
 				} else data.put(tableData.getVirtualTable().toLowerCase(), tableData);
 			}
 		}
-		System.out.println("## GenericCrudMapperInfo.setSecurityInternal RES:" + this.toString());
+		//System.out.println("## GenericCrudMapperInfo.setSecurityInternal RES:" + this.toString());
 	}
 	
 	/* Esta operacion recorre todos los elementos de la tabla y por cada elemento compara sus columnas con las columnas recibidas de la base de datos
@@ -161,10 +198,9 @@ public class GenericMapperInfo {
 	 * Mapea los tamaÃ±os y los tipos para estadisticas
 	 * 
 	 */
-	private void comprobador() throws SQLException, Exception {
+	private void comprobador() throws Exception {
 		Connection conn = null;
 		conn = JDBCBridge.getConnection();
-		Statement stmt = conn.createStatement();
 		//MAPA DE TIPOS Y TAMAÑOS:
 		Map<String, Integer> tipos = new HashMap<String, Integer>();
 		Map<Integer, Integer> sizes = new HashMap<Integer, Integer>();
@@ -175,8 +211,8 @@ public class GenericMapperInfo {
 		////		
 		for (GenericMapperInfoTable table : data.values()) {
 			//LOS CASOS ESPECIALES DE FUNCION Y PROCEDURE SE OMITEN
-			if (table.getType()!=null) {
-				System.out.println("OMITIENDO "+table.getType()+" "+table.getVirtualTable());
+			if (!table.isSelectable()) {
+				//System.out.println("OMITIENDO "+table.getType()+" "+table.getVirtualTable());
 				continue;
 			}
 			
@@ -184,131 +220,221 @@ public class GenericMapperInfo {
 			
 			//TODO de momento solo puedo comprobar las sql sencillas (sin parametros de url)
 			String sql = resolver.getTestSQL(table.getTable());
-			System.out.println("SQL="+sql);
+			//System.out.println("SQL="+sql);
 			
 			//if ((sql.contains("#{")||sql.contains("${"))) {
 			//	System.out.println("Omitiendo comprobacion de tabla:"+table.getTable());
 			//	continue;
 			//}
 			
-			ResultSet rs;
+			ResultSet rs =null;
+			Statement stmt =null;
 			try {
 				//rs = stmt.executeQuery("SELECT * FROM (" + resolver.getSQL(null, table.getTable())+")");
-				rs = stmt.executeQuery(sql);
+				//System.out.println("### ANTES DE SQL:"+sql);
+				
+				ResultSetMetaData md=null;
+				
+				//SI HAY MAPPER LO HAGO POR AQUI
+				Map<String,Object> params = new HashMap<String,Object>();
+				//ademas para el caso especial de BasicDatabaseMapper incluyo los parametros
+				if (resolver instanceof GenericTableResolverTestParams){
+					GenericTableResolverTestParams presolver = (GenericTableResolverTestParams) resolver;
+					params = presolver.getTestParams(table.getTable());
+					//System.out.println("* PARAMS:"+params);
+				}
+				params.put("sql", sql);
+				if (mapper!=null){
+					GenericResultSetHandler.md = null;
+					List<Map<String,Object>> res = mapper.getSQL(params);
+					//System.out.println("MAPPER:"+res);
+					//System.out.println("md:"+GenericResultSetHandler.md);
+					md = GenericResultSetHandler.md;
+				}
+				
+				//SI HAY SQL SESSION FACTORY
+/*				if (sqlSessionFactory!=null){
+					SqlSession session = null;
+					try{
+						session = sqlSessionFactory.openSession();
+						System.out.println("ANTES DE ejecutar----");
+						Configuration configuration = session.getConfiguration();
+						
+						if (!configuration.hasMapper(GenericMapperInfoMapper.class)) {
+							try {
+								configuration.addMapper(GenericMapperInfoMapper.class);
+							} catch (Exception e) {
+								System.out.println("Error while adding the mapper 'es.maltimor.genericRest.GenericMapperInfoMapper' to configuration.");
+								throw new IllegalArgumentException(e);
+							} finally {
+								ErrorContext.instance().reset();
+							}
+						}
+						
+						if (!configuration.hasStatement("kk")) {
+							System.out.println("Insertar KK");
+							List<Map<String,Object>> lst = new ArrayList<Map<String,Object>>();
+							SqlSourceBuilder ss = new SqlSourceBuilder(configuration);
+							MappedStatement.Builder builder = new Builder(configuration, "kk", ss.parse(sql, lst.getClass(), null), SqlCommandType.SELECT);
+							configuration.addMappedStatement(builder.build());
+							System.out.println("Insertar KK.FIN");
+						}
+
+						Collection<?> c = configuration.getMappedStatements();
+						Iterator<?> i = c.iterator();
+						while (i.hasNext()){
+							Object o = i.next();
+							if (o instanceof MappedStatement) System.out.println(((MappedStatement)o).getId());
+							else System.out.println(i.next().getClass());
+						}
+						
+						//System.out.println("antes de mp:");
+						GenericMapperInfoMapper mp = configuration.getMapper(GenericMapperInfoMapper.class, session);
+						List<Map<String,Object>> res2 = mp.getSQL(params);
+						System.out.println("MP:"+res2);
+
+						System.out.println("----------");
+						
+						//List<Map<String,Object>> res = session.selectList(sql);
+						//System.out.println("FACTORY:"+res);
+						
+						ResultHandler handler = new GenericResultHandler2();
+						System.out.println("antes de mp:");
+						session.select("es.maltimor.genericRest.GenericMapperInfoMapper.getSQL",params,handler);
+						System.out.println("+++++");
+					} catch (Exception e2){
+						e2.printStackTrace();
+					} finally {
+						session.close();
+					}
+				}*/
+				
+				if (md==null){
+					//antigua forma de verificacion de la sentencia
+					System.out.println("---verificacion antigua-----");
+					stmt = conn.createStatement();
+					rs = stmt.executeQuery(sql);
+					md = rs.getMetaData();
+				} //else System.out.println("!!!!!!!!!!!!!!!!! MD !!!!!!!!!!!!!!!");
+
+				//String tablaOut = "["+table.getTable()+": ";
+				
+				//CASO DONDE HAY UNA DEFINICION DE LOS KEYS
+				if (table.isHasFields()){
+					for (GenericMapperInfoColumn columna : table.getFields()) {
+						boolean encontrado = false;
+						String columnas = "[";
+						for (int k = 1; k <= md.getColumnCount(); k++) {
+							String columnName = md.getColumnLabel(k);
+							columnas+=columnName+",";
+							//String columnName = md.getColumnName(k);
+							if (columnName.equals(columna.getName())) {
+								encontrado= true;
+								//tablaOut+= "("+ columnName +"," + md.getColumnTypeName(k)+"," + md.getColumnDisplaySize(k)+")";
+								//mapeo de tipos y tamaños:
+								if(tipos.containsKey( md.getColumnTypeName(k) )) tipos.put( md.getColumnTypeName(k), tipos.get(md.getColumnTypeName(k))+1);
+								else tipos.put(md.getColumnTypeName(k), 1);
+								
+								if( sizes.containsKey( md.getColumnDisplaySize(k) ) ) sizes.put( md.getColumnDisplaySize(k), sizes.get( md.getColumnDisplaySize(k) )+1);
+								else sizes.put( md.getColumnDisplaySize(k), 1);
+								//
+								// getColumnLabel(k)>etiqueta
+								// getColumnClassName(k)>java.lang.String etc...
+								// getColumnTypeName(k)>varchar, DATE...
+								// getColumnDisplaySize(k)>tamaÃ±o
+								if (columna.getDescription().isEmpty()) columna.setDescription(columnName);
+								String tipo = columna.getType();
+								if (tipo.isEmpty()) {
+									columna.setType(convertirTipo(md.getColumnTypeName(k)));
+									table.getTypes().put(columna.getName().toLowerCase(), columna.getType());
+								} else {
+									//comprobamos el tipo si es el mismo que el dado o si es equivalente
+									if (!collateTipo(tipo,convertirTipo(md.getColumnTypeName(k)))){
+										lanzaExcepcion=true;
+										mensajesExcepcion+="Error en la sintaxis de la tabla "+ table.getTable()+"," + columna.getName() + " es de tipo "+convertirTipo(md.getColumnTypeName(k))+"\n";
+										continue;
+									}
+								}
+								// TODO comprobar que el tamaÃ±o dado es valido
+								if (columna.getSize().isEmpty()) columna.setSize(Integer.toString(md.getColumnDisplaySize(k)));
+								else {
+									//comprobamos el size si es el mismo que el dado.
+									if (!columna.getSize().equals(Integer.toString(md.getColumnDisplaySize(k)))){
+										lanzaExcepcion=true;
+										mensajesExcepcion+="Error en la sintaxis de la tabla "+ table.getTable()+"," + columna.getName() + " es de tamaño "+Integer.toString(md.getColumnDisplaySize(k))+"\n";
+										continue;
+									}
+								}
+							}
+							if (encontrado) break;
+						}
+						columnas+="]";
+						if (!encontrado) {
+							lanzaExcepcion=true;
+							mensajesExcepcion+="Error en la sintaxis," +  columna.getName() + " no existe en " + table.getTable() + ":" +columnas +"\n";
+							continue;
+						}
+					}
+				}
+				//CASO DONDE NO HAY FIELDS Y/O HAY UN FIELD * -> OBTENGO LOS FIELDS DE LA CONSULTA y lo AÑADO A LO QUE TENGA
+				if (table.isHasSpecialColumn()) {
+					//System.out.println("TABLA "+table.getTable());
+					for (int k = 1; k <= md.getColumnCount(); k++) {
+						String columnName = md.getColumnLabel(k);
+						//tablaOut+= "("+ columnName +"," + md.getColumnTypeName(k)+"," + md.getColumnDisplaySize(k)+")";
+						//mapeo de tipos y tamaños:
+						if(tipos.containsKey( md.getColumnTypeName(k) )) tipos.put( md.getColumnTypeName(k), tipos.get(md.getColumnTypeName(k))+1);
+						else tipos.put(md.getColumnTypeName(k), 1);
+						
+						if( sizes.containsKey( md.getColumnDisplaySize(k) ) ) sizes.put( md.getColumnDisplaySize(k), sizes.get( md.getColumnDisplaySize(k) )+1);
+						else sizes.put( md.getColumnDisplaySize(k), 1);
+						
+						//SOLO INSERTO LA COLUMNA SI NO ESTABA DADA DE ALTA PREVIAMENTE
+						//SI LO HUBIERA ESTADO DEBERIA HABER PASADO LA COMPROBACION
+						boolean encontrado=false;
+						for(GenericMapperInfoColumn col:table.getFields()) if (col.getName().equals(columnName)) { encontrado=true; break; }
+						
+						if (!encontrado){
+							//System.out.println("INCLUYENDO "+columnName);
+							GenericMapperInfoColumn columna = new GenericMapperInfoColumn();
+							columna.setName(columnName);
+							columna.setDescription(columnName);
+							columna.setType(convertirTipo(md.getColumnTypeName(k)));
+							columna.setSize(Integer.toString(md.getColumnDisplaySize(k)));
+							columna.setFullText(true);
+							table.getFields().add(columna);
+							table.getTypes().put(columna.getName().toLowerCase(), columna.getType());
+						} else {
+							//System.out.println("OMITENDO "+columnName);
+						}
+					}
+				}
+				//System.out.println(tablaOut+"|"+table.getKeys().get(0)+"]"); //Para mostrar lo que viene de la BD
+				//[TABLA: (col,tipo,tamaÃ±o),.... | pk]
 			} catch (Exception e) {
 				//Salta si la tabla no existe:
 				e.printStackTrace();
 				lanzaExcepcion=true;
 				mensajesExcepcion+="Error en la sintaxis, la tabla " +  table.getTable() + " no existe\n";
 				continue;
-			}			
-			ResultSetMetaData md = rs.getMetaData();
-			//String tablaOut = "["+table.getTable()+": ";
-			
-			//CASO DONDE HAY UNA DEFINICION DE LOS KEYS
-			if (table.isHasFields()){
-				for (GenericMapperInfoColumn columna : table.getFields()) {
-					boolean encontrado = false;
-					String columnas = "[";
-					for (int k = 1; k <= md.getColumnCount(); k++) {
-						String columnName = md.getColumnLabel(k);
-						columnas+=columnName+",";
-						//String columnName = md.getColumnName(k);
-						if (columnName.equals(columna.getName())) {
-							encontrado= true;
-							//tablaOut+= "("+ columnName +"," + md.getColumnTypeName(k)+"," + md.getColumnDisplaySize(k)+")";
-							//mapeo de tipos y tamaños:
-							if(tipos.containsKey( md.getColumnTypeName(k) )) tipos.put( md.getColumnTypeName(k), tipos.get(md.getColumnTypeName(k))+1);
-							else tipos.put(md.getColumnTypeName(k), 1);
-							
-							if( sizes.containsKey( md.getColumnDisplaySize(k) ) ) sizes.put( md.getColumnDisplaySize(k), sizes.get( md.getColumnDisplaySize(k) )+1);
-							else sizes.put( md.getColumnDisplaySize(k), 1);
-							//
-							// getColumnLabel(k)>etiqueta
-							// getColumnClassName(k)>java.lang.String etc...
-							// getColumnTypeName(k)>varchar, DATE...
-							// getColumnDisplaySize(k)>tamaÃ±o
-							if (columna.getDescription().isEmpty()) columna.setDescription(columnName);
-							String tipo = columna.getType();
-							if (tipo.isEmpty()) {
-								columna.setType(convertirTipo(md.getColumnTypeName(k)));
-								table.getTypes().put(columna.getName().toLowerCase(), columna.getType());
-							} else {
-								//comprobamos el tipo si es el mismo que el dado o si es equivalente
-								if (!collateTipo(tipo,convertirTipo(md.getColumnTypeName(k)))){
-									lanzaExcepcion=true;
-									mensajesExcepcion+="Error en la sintaxis de la tabla "+ table.getTable()+"," + columna.getName() + " es de tipo "+convertirTipo(md.getColumnTypeName(k))+"\n";
-									continue;
-								}
-							}
-							// TODO comprobar que el tamaÃ±o dado es valido
-							if (columna.getSize().isEmpty()) columna.setSize(Integer.toString(md.getColumnDisplaySize(k)));
-							else {
-								//comprobamos el size si es el mismo que el dado.
-								if (!columna.getSize().equals(Integer.toString(md.getColumnDisplaySize(k)))){
-									lanzaExcepcion=true;
-									mensajesExcepcion+="Error en la sintaxis de la tabla "+ table.getTable()+"," + columna.getName() + " es de tamaño "+Integer.toString(md.getColumnDisplaySize(k))+"\n";
-									continue;
-								}
-							}
-						}
-						if (encontrado) break;
-					}
-					columnas+="]";
-					if (!encontrado) {
-						lanzaExcepcion=true;
-						mensajesExcepcion+="Error en la sintaxis," +  columna.getName() + " no existe en " + table.getTable() + ":" +columnas +"\n";
-						continue;
-					}
-				}
-			}
-			//CASO DONDE NO HAY FIELDS Y/O HAY UN FIELD * -> OBTENGO LOS FIELDS DE LA CONSULTA y lo AÑADO A LO QUE TENGA
-			if (table.isHasSpecialColumn()) {
-				System.out.println("TABLA "+table.getTable());
-				for (int k = 1; k <= md.getColumnCount(); k++) {
-					String columnName = md.getColumnLabel(k);
-					//tablaOut+= "("+ columnName +"," + md.getColumnTypeName(k)+"," + md.getColumnDisplaySize(k)+")";
-					//mapeo de tipos y tamaños:
-					if(tipos.containsKey( md.getColumnTypeName(k) )) tipos.put( md.getColumnTypeName(k), tipos.get(md.getColumnTypeName(k))+1);
-					else tipos.put(md.getColumnTypeName(k), 1);
-					
-					if( sizes.containsKey( md.getColumnDisplaySize(k) ) ) sizes.put( md.getColumnDisplaySize(k), sizes.get( md.getColumnDisplaySize(k) )+1);
-					else sizes.put( md.getColumnDisplaySize(k), 1);
-					
-					//SOLO INSERTO LA COLUMNA SI NO ESTABA DADA DE ALTA PREVIAMENTE
-					//SI LO HUBIERA ESTADO DEBERIA HABER PASADO LA COMPROBACION
-					boolean encontrado=false;
-					for(GenericMapperInfoColumn col:table.getFields()) if (col.getName().equals(columnName)) { encontrado=true; break; }
-					
-					if (!encontrado){
-						System.out.println("INCLUYENDO "+columnName);
-						GenericMapperInfoColumn columna = new GenericMapperInfoColumn();
-						columna.setName(columnName);
-						columna.setDescription(columnName);
-						columna.setType(convertirTipo(md.getColumnTypeName(k)));
-						columna.setSize(Integer.toString(md.getColumnDisplaySize(k)));
-						columna.setFullText(true);
-						table.getFields().add(columna);
-						table.getTypes().put(columna.getName().toLowerCase(), columna.getType());
-					} else {
-						System.out.println("OMITENDO "+columnName);
-					}
-				}
-			}
-			//System.out.println(tablaOut+"|"+table.getKeys().get(0)+"]"); //Para mostrar lo que viene de la BD
-			//[TABLA: (col,tipo,tamaÃ±o),.... | pk]
+			} finally {
+				if (rs!=null) rs.close();
+				if (stmt!=null) stmt.close();
+				rs=null;
+				stmt=null;
+			} 
 		}
 		//MOSTRAMOS TIPOS Y TAMAÃ‘OS:
-		System.out.print("TIPOS: ");
+		//System.out.print("TIPOS: ");
 		for(Entry<String, Integer> entry : tipos.entrySet()) {
-			System.out.print(entry.getKey()+"("+entry.getValue()+"), ");
+			//System.out.print(entry.getKey()+"("+entry.getValue()+"), ");
 		}
-		System.out.println();
-		System.out.print("TAMAÑOS: ");
+		//System.out.println();
+		//System.out.print("TAMAÑOS: ");
 		for(Entry<Integer, Integer> entry : sizes.entrySet()) {
-			System.out.print(entry.getKey()+"("+entry.getValue()+"), ");
+			//System.out.print(entry.getKey()+"("+entry.getValue()+"), ");
 		}
-		System.out.println();
+		//System.out.println();
 		
 		if (lanzaExcepcion){
 			throw new Exception("Error GLOBAL: "+mensajesExcepcion);
@@ -326,7 +452,8 @@ public class GenericMapperInfo {
 		else if (tipo.equals("DECIMAL")) tipo = "N";
 		else if (tipo.equals("INT")) tipo = "N";
 		else if (tipo.equals("DOUBLE")) tipo = "N";
-		//else if (tipo.equals("CLOB")) tipo = "T";			// TODO Crear un tipo C
+		else if (tipo.equals("CLOB")) tipo = "C";			// TODO Crear un tipo C
+		else if (tipo.equals("BLOB")) tipo = "B";			// TODO Crear un tipo B
 		else System.out.println("WARNING: Convertir Tipo NO RECONOCIDO:"+tipo);
 		return tipo;
 	}

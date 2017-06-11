@@ -8,7 +8,7 @@ import java.util.Map;
 import org.springframework.context.ApplicationContext;
 
 public class GenericMapperInfoTable {
-	private String type;		//tipo: tabla, procedure (^), function (=)
+	private String type;		//tipo: tabla, procedure (^), function (=), sql (&)
 	private String table;
 	private String virtualTable;
 	private String driver;
@@ -24,7 +24,7 @@ public class GenericMapperInfoTable {
 	private ApplicationContext context;
 	private GenericMapperInfoTableResolver resolver;
 	private GenericMapperSecurityTableResolver secResolver;
-
+	
 	// por ahora solo se coge el keys[0]
 	public GenericMapperInfoTable() {
 		this.fields = new ArrayList<GenericMapperInfoColumn>();
@@ -63,22 +63,25 @@ public class GenericMapperInfoTable {
 		} else if (head.startsWith("^")) {
 			type="PROCEDURE";
 			head=head.substring(1);
+		} else if (head.startsWith("&")) {
+			type="SQL";
+			head=head.substring(1);
 		}
 		
 		if ((head.contains(":")&&(!head.contains("@")))){
-			System.out.println("CASO1");
+			//System.out.println("CASO1");
 			String[] vTable=head.split(":");
 			table=vTable[1];
 			virtualTable=vTable[0];
 		} else if (head.contains("@")){
 			String[] vTable=head.split("@");
 			if(vTable[0].contains(":")){
-				System.out.println("CASO2");
+				//System.out.println("CASO2");
 				String[] vTable2=vTable[0].split(":");
 				table=vTable2[1];
 				virtualTable=vTable2[0];
 			} else {
-				System.out.println("CASO3");
+				//System.out.println("CASO3");
 				table=vTable[0];
 				virtualTable=vTable[0];
 			}
@@ -89,7 +92,7 @@ public class GenericMapperInfoTable {
 			} else throw new Exception("Error. Clase no implementa interfaz GenericCrudMapperInfoTableResolver. setInfo( " + info + " )");
 			
 		} else {
-			System.out.println("CASO4");
+			//System.out.println("CASO4");
 			table=head;
 			virtualTable=head;
 		}
@@ -144,8 +147,8 @@ public class GenericMapperInfoTable {
 				String secuence = "";
 				if (t.length > 1) {
 					type = t[1];
-					if (!"TNFDS".contains(type))
-						throw new Exception("Error en la sintaxis GenericCrudMapperInfo.setInfo( " + info + " ), TIPOS VALIDOS: T,N,F,D,S");
+					if (!"TNFDSCBR".contains(type))
+						throw new Exception("Error en la sintaxis GenericCrudMapperInfo.setInfo( " + info + " ), TIPOS VALIDOS: T,N,F,D,S,C,B,R");
 					if (t.length>2) {
 						if (type.equals("T")) size = t[2];
 						else if (type.equals("S")) secuence = t[2];
@@ -161,7 +164,7 @@ public class GenericMapperInfoTable {
 	}
 	
 	public void setSecurity(String secInfo) throws Exception {
-		System.out.println("## GenericCrudMapperInfoTable: SECURITY: " + secInfo);
+		//System.out.println("## GenericCrudMapperInfoTable: SECURITY: " + secInfo);
 		String[] tokens = secInfo.split("\\|");
 		if (tokens.length < 2) throw new Exception("Error en la sintaxis GenericCrudMapperInfo.setSecurity( " + secInfo + " )");
 
@@ -169,7 +172,7 @@ public class GenericMapperInfoTable {
 		String head=tokens[0];
 		if (head.contains("@")){
 			String[] vTable=head.split("@");
-			System.out.println("CASO3");
+			//System.out.println("CASO3");
 			table=vTable[0];
 			virtualTable=vTable[0];
 			if (context==null) throw new Exception("Context No inicializada");
@@ -178,27 +181,27 @@ public class GenericMapperInfoTable {
 				secResolver = (GenericMapperSecurityTableResolver) bean;
 			} else throw new Exception("Error. Clase no implementa interfaz GenericCrudMapperSecurityTableResolver. setSecurity( " + secInfo + " )");
 		} else {
-			System.out.println("CASO4");
+			//System.out.println("CASO4");
 			table=head;
 			virtualTable=head;
 		}
 		
 		//troceo los actions por ,
-		System.out.println("Actions="+tokens[1]);
+		///System.out.println("Actions="+tokens[1]);
 		String actions[] = tokens[1].split(",");
 		for(String action:actions){
 			//separo key=valor
-			System.out.println("Action="+action);
+			//System.out.println("Action="+action);
 			int i1= action.indexOf("=");
 			if (i1==-1) throw new Exception("Error. Falta = en definicion security:"+action+" -> "+tokens[1]+" -> "+secInfo);
 			String key=action.substring(0,i1);
 			String valor=action.substring(i1+1);
 			
-			System.out.println("key="+key+" valor="+valor);
+			//System.out.println("key="+key+" valor="+valor);
 			//CADA LETRA DEL KEY ES INTERPRETADA COMO UNA ACCION: SIUDE
 			for(int i=0;i<key.length();i++){
 				String k=key.substring(i,i+1);
-				System.out.println(k);
+				//System.out.println(k);
 				//tomo la lista de procesos asociada a la accion o la creo nueva
 				List<String> lproc = actionRoles.get(k);
 				if (lproc==null) {
@@ -209,13 +212,13 @@ public class GenericMapperInfoTable {
 				//separo valor en sus correspondientes tokens :
 				String procesos[] = valor.split(":");
 				for(String proceso:procesos){
-					System.out.println("proc="+proceso);
+					//System.out.println("proc="+proceso);
 					if (!lproc.contains(proceso)) lproc.add(proceso);
 				}
-				System.out.println("....");
+				//System.out.println("....");
 			}
 		}
-		System.out.println("------");
+		//System.out.println("------");
 		
 		//TODO Comprobar la sintaxis y la semantica
 		//TODO cachear la expresion regular, optimizar el analisis sitactico 
@@ -253,6 +256,14 @@ public class GenericMapperInfoTable {
 		}
 		res += "] }";
 		return res;
+	}
+
+	/*
+	 * indica si este servicio es del tipo select o no (function,procedure,script...)
+	 */
+	public boolean isSelectable(){
+		if (type==null) return true;
+		else return false;
 	}
 
 	public String getTable() {

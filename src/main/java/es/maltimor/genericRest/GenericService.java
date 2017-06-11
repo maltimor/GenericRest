@@ -28,6 +28,10 @@ import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 
 import es.maltimor.genericRest.GenericMapperInfoTable;
 import es.maltimor.genericRest.GenericServiceDao;
+import es.maltimor.genericRest.export.ExportExcel;
+import es.maltimor.genericRest.export.ExportHTML;
+import es.maltimor.genericRest.export.ExportTXT;
+import es.maltimor.genericRest.export.ExportableData;
 import es.maltimor.genericUser.User;
 import es.maltimor.genericUser.UserDao;
 
@@ -111,7 +115,7 @@ public class GenericService {
 			//comprobar la seguridad
 			User user = userDao.getUser(userDao.getLogin(), app);
 			GenericMapperInfoTable t = service.getMapperInfoTable(user, table);
-			if (t.getType()!=null){
+			if (!t.isSelectable()){
 				System.out.println("---- no PROCEDE");
 				return Response.status(HttpServletResponse.SC_NOT_FOUND).entity("No existe el proceso").build();
 			}
@@ -154,7 +158,7 @@ public class GenericService {
 			//comprobar la seguridad y que proceda
 			User user = userDao.getUser(userDao.getLogin(), app);
 			GenericMapperInfoTable t = service.getMapperInfoTable(user, table);
-			if (t.getType()!=null){
+			if (!t.isSelectable()){
 				System.out.println("---- no PROCEDE");
 				return Response.status(HttpServletResponse.SC_NOT_FOUND).entity("No existe el proceso").build();
 			}
@@ -164,25 +168,7 @@ public class GenericService {
 				return Response.status(HttpServletResponse.SC_UNAUTHORIZED).entity("No tiene permisos").build();
 			}
 			List<Map<String,Object>> data = service.getAll(user,table,filter,limit,offset,orderby,order,fields,ui);
-			if (format.equals("JSON")) return Response.ok(data).build();
-			else {
-				//preparo la exportacion
-				Map<String,Object> param=new HashMap<String,Object>();
-				param.put("excel",false);
-				param.put("table",true);
-				param.put("blankWhenNull", true);
-				param.put("separator", ",");
-				if (format.equals("XLS")) param.put("excel",true);
-				else if (format.equals("CSV")) param.put("table",false);
-				else if (format.equals("TXT")) param.put("table",false);
-				Object out = toText(data,getFieldList(t,fields),param);
-				//salida y content type
-				if (format.equals("XLS")) return Response.ok(out,"application/vnd.ms-excel; charset=utf-8; name=exec.xls").header("Content-Disposition","inline;filename=exec.xls").build();
-				else if (format.equals("CSV")) return Response.ok(out,"text/csv; charset=utf-8; name=exec.xls").header("Content-Disposition","inline;filename=exec.csv").build();
-				else if (format.equals("HTML")) return Response.ok(out,"text/html; charset=utf-8").build();
-				else if (format.equals("TXT")) return Response.ok(out,"text/plain; charset=utf-8").build();
-				else return Response.serverError().entity("Formato no soportado").build();
-			}
+			return getResponseData(data,format,getFieldList(t,fields));
 		} catch (Exception e) {
 			e.printStackTrace();
 			return Response.serverError().entity(e.getMessage()).build();
@@ -191,7 +177,12 @@ public class GenericService {
 
 	@GET
 	@Path("/{table}/{id:.*}")
-	public Response getById(@PathParam("table") String table, @PathParam("id") String id,@Context UriInfo ui){
+	public Response getById(
+			@PathParam("table") String table,
+			@PathParam("id") String id,
+			@QueryParam("fields") @DefaultValue("*") String fields,
+			@QueryParam("format") @DefaultValue("JSON") String format,
+			@Context UriInfo ui){
 		System.out.println("REST:GET "+table+":"+id);
 
 		try {
@@ -203,7 +194,7 @@ public class GenericService {
 			//comprobar la seguridad y que proceda
 			User user = userDao.getUser(userDao.getLogin(), app);
 			GenericMapperInfoTable t = service.getMapperInfoTable(user, table);
-			if (t.getType()!=null){
+			if (!t.isSelectable()){
 				System.out.println("---- no PROCEDE");
 				return Response.status(HttpServletResponse.SC_NOT_FOUND).entity("No existe el proceso").build();
 			}
@@ -214,7 +205,7 @@ public class GenericService {
 			}
 
 			Map<String,Object> data = service.getById(user,table,id,ui);
-			return Response.ok(data).build();
+			return getResponseData(data,format,getFieldList(t, fields));
 		} catch (Exception e) {
 			e.printStackTrace();
 			return Response.serverError().entity(e.getMessage()).build();
@@ -223,7 +214,12 @@ public class GenericService {
 	
 	@POST
 	@Path("/{table}")
-	public Response insert(@PathParam("table") String table, @Context UriInfo ui, Map<String,Object> data){
+	public Response insert(
+			@PathParam("table") String table,
+			@Context UriInfo ui,
+			@QueryParam("fields") @DefaultValue("*") String fields,
+			@QueryParam("format") @DefaultValue("JSON") String format,
+			Map<String,Object> data){
 		System.out.println("REST: POST "+table+":"+data.size());
 
 		try {
@@ -235,15 +231,14 @@ public class GenericService {
 			//comprobar la seguridad
 			User user = userDao.getUser(userDao.getLogin(), app);
 			GenericMapperInfoTable t = service.getMapperInfoTable(user, table);
-			String type=t.getType();
-			if (((type==null) && (!securityDao.canInsert(user, table, data, ui)))
-				||((type!=null) && (!securityDao.canExecute(user, table, data, ui)))){
+			if ((t.isSelectable() && (!securityDao.canInsert(user, table, data, ui)))
+				||(!t.isSelectable() && (!securityDao.canExecute(user, table, data, ui)))){
 				System.out.println("---- no tiene permisos");
 				return Response.status(HttpServletResponse.SC_UNAUTHORIZED).entity("No tiene permisos").build();
 			}
 
 			//Aqui determino si hay que hacer un insert o un update
-			if (type==null){	//caso normal de tabla, insert
+			if (t.isSelectable()){	//caso normal de tabla, insert
 				if (service.insert(user,table,data,ui)){
 					return Response.ok(data).build();
 				} else {
@@ -251,7 +246,7 @@ public class GenericService {
 				}
 			} else {	//caso de funcion o procedure: execute
 				Object res = service.execute(user, table, data, ui);
-				return Response.ok(res).build();
+				return getResponseData(res,format,getFieldList(t, fields));
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -274,7 +269,7 @@ public class GenericService {
 			//comprobar la seguridad y que proceda
 			User user = userDao.getUser(userDao.getLogin(), app);
 			GenericMapperInfoTable t = service.getMapperInfoTable(user, table);
-			if (t.getType()!=null){
+			if (!t.isSelectable()){
 				System.out.println("---- no PROCEDE");
 				return Response.status(HttpServletResponse.SC_NOT_FOUND).entity("No existe el proceso").build();
 			}
@@ -309,7 +304,7 @@ public class GenericService {
 			//comprobar la seguridad y que proceda
 			User user = userDao.getUser(userDao.getLogin(), app);
 			GenericMapperInfoTable t = service.getMapperInfoTable(user, table);
-			if (t.getType()!=null){
+			if (!t.isSelectable()){
 				System.out.println("---- no PROCEDE");
 				return Response.status(HttpServletResponse.SC_NOT_FOUND).entity("No existe el proceso").build();
 			}
@@ -410,6 +405,38 @@ public class GenericService {
 		}
 		return fields;
 	}
+	
+	private Response getResponseData(Object odata,String format,List<String> fieldList){
+		//si los datos no se pueden mapear a list<map> no hago caso a format
+		//transformo los datos
+		List<Map<String,Object>> data=null;
+		try{
+			data = (List<Map<String, Object>>) odata;
+		} catch (Exception e){
+			format="JSON";
+		}
+
+		//TODO ¿debería filtrar los campos a field list?
+		if (format.equals("JSON")) return Response.ok(odata).build();
+		
+		ExportableData export = null;
+		if (format.equals("XLS")) export = new ExportExcel(fieldList);
+		else if (format.equals("HTML")) export = new ExportHTML(fieldList);
+		else if (format.equals("CSV")) export = new ExportTXT(fieldList);
+		else if (format.equals("TXT")) export = new ExportTXT(fieldList);
+
+		export.doHead();
+		export.doBody(data);
+		export.doFoot();
+		Object out = export.getResult();
+		
+		//salida y content type
+		if (format.equals("XLS")) return Response.ok(out,"application/vnd.ms-excel; charset=utf-8; name=exec.xls").header("Content-Disposition","inline;filename=exec.xls").build();
+		else if (format.equals("CSV")) return Response.ok(out,"text/csv; charset=utf-8; name=exec.xls").header("Content-Disposition","inline;filename=exec.csv").build();
+		else if (format.equals("HTML")) return Response.ok(out,"text/html; charset=utf-8").build();
+		else if (format.equals("TXT")) return Response.ok(out,"text/plain; charset=utf-8").build();
+		else return Response.serverError().entity("Formato no soportado").build();
+	}
 
 	//fields,decorator
 	private Object toText(List<Map<String,Object>> data,List<String> fields,Map<String,Object> params){
@@ -417,6 +444,8 @@ public class GenericService {
 		boolean table = params.containsKey("table")?(Boolean) params.get("table"):true;
 		String separator = params.containsKey("separator")?(String) params.get("separator"):"";
 		boolean blankWhenNull = params.containsKey("blankWhenNull")?(Boolean) params.get("blankWhenNull"):true;
+		
+		
 		
 		StringBuilder res=new StringBuilder();
         HSSFWorkbook workbook = new HSSFWorkbook();

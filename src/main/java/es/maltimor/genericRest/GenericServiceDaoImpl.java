@@ -2,6 +2,8 @@ package es.maltimor.genericRest;
 
 import java.sql.Blob;
 import java.sql.Clob;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -67,7 +69,7 @@ public class GenericServiceDaoImpl implements GenericServiceDao {
 	//sustituir los info ppor info.getinfotable
 	public long cntAll(User user, String table, String filter,UriInfo ui) throws Exception {
 		GenericMapperInfoTable infoTable = info.getInfoTable(table);
-		System.out.println("cntALL: user="+user+" table="+table+" filter="+filter+" info="+infoTable);
+		//System.out.println("cntALL: user="+user+" table="+table+" filter="+filter+" info="+infoTable);
 		long startTime = System.currentTimeMillis();
 		if (infoTable==null) throw new Exception("No existe la tabla "+table);
 		try{
@@ -79,7 +81,7 @@ public class GenericServiceDaoImpl implements GenericServiceDao {
 			params.put("ui", ui);
 			params.put("query", getQueryMap(ui));
 			long res = mapper.cntAll(params);//user,infoTable.getTable(),infoTable,filter);
-			System.out.println("****cntALL: "+(System.currentTimeMillis()-startTime));
+			//System.out.println("****cntALL: "+(System.currentTimeMillis()-startTime));
 			return res;
 		} catch (Exception e){
 			throw new Exception(getMessage(e));
@@ -88,7 +90,7 @@ public class GenericServiceDaoImpl implements GenericServiceDao {
 
 	public List<Map<String, Object>> getAll(User user, String table, String filter, long limit, long offset, String orderby, String order,String fields,UriInfo ui) throws Exception {
 		GenericMapperInfoTable infoTable = info.getInfoTable(table);
-		System.out.println("getALL: user="+user+" table="+table+" filter="+filter+" limit="+limit+" offset="+offset+" orderBy="+orderby+" order="+order+" fields="+fields+" info="+infoTable);
+		//System.out.println("getALL: user="+user+" table="+table+" filter="+filter+" limit="+limit+" offset="+offset+" orderBy="+orderby+" order="+order+" fields="+fields+" info="+infoTable);
 		long startTime = System.currentTimeMillis();
 		if (infoTable==null) throw new Exception("No existe la tabla "+table);
 		try{
@@ -110,7 +112,7 @@ public class GenericServiceDaoImpl implements GenericServiceDao {
 			if (res!=null){
 				List<String> keys = new ArrayList<String>();
 				for(GenericMapperInfoColumn col:infoTable.getFields()){
-					if (col.getType().equals("BLOB")||col.getType().equals("CLOB")) keys.add(col.getName());
+					if (col.getType().equals("B")||col.getType().equals("C")) keys.add(col.getName());
 				}
 				if (keys.size()>0){
 					for(Map<String,Object> map:res){
@@ -119,7 +121,7 @@ public class GenericServiceDaoImpl implements GenericServiceDao {
 				}
 			}
 			
-			System.out.println("****getALL: "+(System.currentTimeMillis()-startTime));
+			//System.out.println("****getALL: "+(System.currentTimeMillis()-startTime));
 			return res;
 		} catch (Exception e){
 			throw new Exception(getMessage(e));
@@ -128,7 +130,7 @@ public class GenericServiceDaoImpl implements GenericServiceDao {
 
 	public Map<String, Object> getById(User user, String table, Object id,UriInfo ui) throws Exception {
 		GenericMapperInfoTable infoTable = info.getInfoTable(table);
-		System.out.println("getById: user="+user+" table="+table+" id="+id+" info="+infoTable);
+		//System.out.println("getById: user="+user+" table="+table+" id="+id+" info="+infoTable);
 		long startTime = System.currentTimeMillis();
 		if (infoTable==null) throw new Exception("No existe la tabla "+table);
 		try{
@@ -144,29 +146,60 @@ public class GenericServiceDaoImpl implements GenericServiceDao {
 			//TODO tratar los tipos de datos de salida! sobre todo los blob y clob convertirlos a algo
 			if (res!=null){
 				for(GenericMapperInfoColumn col:infoTable.getFields()){
-					if (col.getType().equals("BLOB")||col.getType().equals("CLOB")) getLOB(res,col.getName());
+					if (col.getType().equals("B")||col.getType().equals("C")) getLOB(res,col.getName());
 				}
 			}
-			System.out.println("****getById: "+(System.currentTimeMillis()-startTime));
+			//System.out.println("****getById: "+(System.currentTimeMillis()-startTime));
 			return res;
 		} catch (Exception e){
 			throw new Exception(getMessage(e));
 		}
 	}
 	
-	private void getLOB(Map<String,Object> map,String key) throws Exception{
-		Object value = map.get(key);
+	private Object doLOB(Object value) throws Exception{
 		if (value!=null) {
 			if (value instanceof Blob){
 				Blob blob = (Blob) value;
 				byte[] buff= blob.getBytes(1,(int) blob.length());
-				map.put(key, buff);
+				return buff;
 			} else if (value instanceof Clob){
 				Clob clob = (Clob) value;
 				String buff= clob.getSubString(1,(int) clob.length());
-				map.put(key, buff);
-			}
-		}
+				return buff;
+			} else return value;
+		} else return null;
+	}
+	
+	private Object doRS(Object value) throws Exception{
+		if (value!=null) {
+			//System.out.println(value);
+			if (value instanceof ResultSet){
+				ResultSet rs = (ResultSet) value;
+				ResultSetMetaData rsmd = rs.getMetaData();
+				int columns = rsmd.getColumnCount();
+				//System.out.println("COLS:"+columns);
+				List<Map<String,Object>> lmap = new ArrayList<Map<String,Object>>();
+				while(rs.next()) {
+					Map<String,Object> map = new HashMap<String,Object>();
+					for(int i=1;i<=columns;i++){
+						map.put(rsmd.getColumnName(i), rs.getObject(i));
+					}
+					lmap.add(map);
+				}
+				return lmap;
+			} else return value;
+		} else return null;
+	}
+
+	private void getLOB(Map<String,Object> map,String key) throws Exception{
+		Object value = map.get(key);
+		map.put(key, doLOB(value));
+	}
+
+	private void getRS(Map<String,Object> map,String key) throws Exception{
+		//System.out.println("GET RS KEY="+key);
+		Object value = map.get(key);
+		map.put(key, doRS(value));
 	}
 	
 	@Transactional(
@@ -175,7 +208,7 @@ public class GenericServiceDaoImpl implements GenericServiceDao {
 	        readOnly = false)
 	public boolean insert(User user, String table, Map<String, Object> data,UriInfo ui) throws Exception {
 		GenericMapperInfoTable infoTable = info.getInfoTable(table);
-		System.out.println("insert: user="+user+" table="+table+" data="+data.size()+" info="+infoTable);
+		//System.out.println("insert: user="+user+" table="+table+" data="+data.size()+" info="+infoTable);
 		long startTime = System.currentTimeMillis();
 		if (infoTable==null) throw new Exception("No existe la tabla "+table);
 		try{
@@ -195,7 +228,7 @@ public class GenericServiceDaoImpl implements GenericServiceDao {
 				if (column.getType().equals("S")){
 					if (column.getType().equals("S")) {
 						Map<String, Object> res = mapper.getSecuenceValue(column.getSecuenceName());		//caso de numero de secuencia
-						System.out.println("RESULTADO:"+res);
+						//System.out.println("RESULTADO:"+res);
 						Object value = res.get("VALUE");
 						if (value==null || value.equals("")) value = res.get("value");
 						if (value!=null && !value.equals("")) data.put(key, value);
@@ -203,7 +236,7 @@ public class GenericServiceDaoImpl implements GenericServiceDao {
 				}
 			}
 			
-			System.out.println("****insert: "+(System.currentTimeMillis()-startTime));
+			//System.out.println("****insert: "+(System.currentTimeMillis()-startTime));
 			return true;
 		} catch (Exception e){
 			throw new Exception(getMessage(e));
@@ -212,7 +245,7 @@ public class GenericServiceDaoImpl implements GenericServiceDao {
 
 	public boolean update(User user, String table, Object id, Map<String, Object> data,UriInfo ui) throws Exception {
 		GenericMapperInfoTable infoTable = info.getInfoTable(table);
-		System.out.println("update: user="+user+" table="+table+" id="+id+" data="+data.size()+" info="+infoTable);
+		//System.out.println("update: user="+user+" table="+table+" id="+id+" data="+data.size()+" info="+infoTable);
 		long startTime = System.currentTimeMillis();
 		if (infoTable==null) throw new Exception("No existe la tabla "+table);
 		try{
@@ -226,7 +259,7 @@ public class GenericServiceDaoImpl implements GenericServiceDao {
 			params.put("query", getQueryMap(ui));
 	
 			mapper.update(params);//user,infoTable.getTable(),infoTable,id,data);
-			System.out.println("****update: "+(System.currentTimeMillis()-startTime));
+			//System.out.println("****update: "+(System.currentTimeMillis()-startTime));
 			return true;
 		} catch (Exception e){
 			throw new Exception(getMessage(e));
@@ -235,7 +268,7 @@ public class GenericServiceDaoImpl implements GenericServiceDao {
 
 	public boolean delete(User user, String table, Object id,UriInfo ui) throws Exception {
 		GenericMapperInfoTable infoTable = info.getInfoTable(table);
-		System.out.println("delete: user="+user+" table="+table+" id="+id+" info="+infoTable);
+		//System.out.println("delete: user="+user+" table="+table+" id="+id+" info="+infoTable);
 		long startTime = System.currentTimeMillis();
 		if (infoTable==null) throw new Exception("No existe la tabla "+table);
 		try{
@@ -248,7 +281,7 @@ public class GenericServiceDaoImpl implements GenericServiceDao {
 			params.put("query", getQueryMap(ui));
 	
 			mapper.delete(params);//user,infoTable.getTable(),infoTable,id);
-			System.out.println("****delete: "+(System.currentTimeMillis()-startTime));
+			//System.out.println("****delete: "+(System.currentTimeMillis()-startTime));
 			return true;
 		} catch (Exception e){
 			throw new Exception(getMessage(e));
@@ -257,7 +290,7 @@ public class GenericServiceDaoImpl implements GenericServiceDao {
 	
 	public Object execute(User user, String table, Map<String, Object> data,UriInfo ui) throws Exception {
 		GenericMapperInfoTable infoTable = info.getInfoTable(table);
-		System.out.println("execute: user="+user+" table="+table+" data="+data.size()+" info="+infoTable);
+		//System.out.println("execute: user="+user+" table="+table+" data="+data.size()+" info="+infoTable);
 		long startTime = System.currentTimeMillis();
 		if (infoTable==null) throw new Exception("No existe la tabla "+table);
 		try{
@@ -270,28 +303,83 @@ public class GenericServiceDaoImpl implements GenericServiceDao {
 			params.put("query", getQueryMap(ui));
 			params.put("out", null);
 			
-			mapper.execute(params);//user,infoTable.getTable(),infoTable,data);
-			System.out.println("****insert: "+(System.currentTimeMillis()-startTime));
-			return params.get("out");
+			//aqui introduzco los diferentes tipos de ejecuciones
+			Object res=null;
+			String type=infoTable.getType();
+			if (type!=null && type.equals("SQL")){
+				res = mapper.executeSQL(params);//user,infoTable.getTable(),infoTable,data);
+			} else {
+				//codigo original
+				mapper.execute(params);//user,infoTable.getTable(),infoTable,data);
+				res = params.get("out");
+			}
+			
+			//TODO tratar los tipos de datos de salida! sobre todo los blob y clob convertirlos a algo
+			if (res!=null){
+				//primero veo los tipos basicos
+				if (res instanceof Clob || res instanceof Blob){
+					return doLOB(res);
+				}
+				
+				if (res instanceof ResultSet){
+					return doRS(res);
+				}
+				
+				//intento hacer un cast a List<Map> si falla no busco LOBS
+				try{
+					List<Map<String,Object>> lmap = (List<Map<String, Object>>) res;
+					//System.out.println(lmap);
+					List<String> LOBkeys = new ArrayList<String>();
+					List<String> RSkeys = new ArrayList<String>();
+					for(GenericMapperInfoColumn col:infoTable.getFields()){
+						if (col.getType().equals("B")||col.getType().equals("C")) LOBkeys.add(col.getName());
+						if (col.getType().equals("R")) RSkeys.add(col.getName());
+					}
+					if (LOBkeys.size()>0 || RSkeys.size()>0){
+						for(Map<String,Object> map:lmap){
+							for(String key:LOBkeys) getLOB(map,key);
+							for(String key:RSkeys) getRS(map,key);
+						}
+					}
+					return lmap;
+				} catch (Exception e){
+					//intento hacer un cast a Map<String,Object>
+					try{
+						Map<String,Object> map = (Map<String, Object>) res;
+						List<String> LOBkeys = new ArrayList<String>();
+						List<String> RSkeys = new ArrayList<String>();
+						for(GenericMapperInfoColumn col:infoTable.getFields()){
+							if (col.getType().equals("B")||col.getType().equals("C")) LOBkeys.add(col.getName());
+							if (col.getType().equals("R")) RSkeys.add(col.getName());
+						}
+						for(String key:LOBkeys) getLOB(map,key);
+						for(String key:RSkeys) getRS(map,key);
+						return map;
+					} catch (Exception e2){} //intencionado
+				}
+			}
+			
+			//System.out.println("****insert: "+(System.currentTimeMillis()-startTime));
+			return res;
 		} catch (Exception e){
 			throw new Exception(getMessage(e));
 		}
-	}	
+	}
 	
 	public GenericMapperInfoTable getMapperInfoTable(User user, String table) throws Exception {
 		GenericMapperInfoTable infoTable = info.getInfoTable(table);
-		System.out.println("getMapperInfoTable: user="+user+" table="+table+" info="+infoTable);
+		//System.out.println("getMapperInfoTable: user="+user+" table="+table+" info="+infoTable);
 		long startTime = System.currentTimeMillis();
 		if (infoTable==null) throw new Exception("No existe la tabla "+table);
-		System.out.println("****getMapperInfoTable: "+(System.currentTimeMillis()-startTime));
+		//System.out.println("****getMapperInfoTable: "+(System.currentTimeMillis()-startTime));
 		return infoTable;
 	}
 	
 	public List<String> getMapperInfoList(User user) {
-		System.out.println("getMapperInfoTable: user="+user);
+		//System.out.println("getMapperInfoTable: user="+user);
 		long startTime = System.currentTimeMillis();
 		List<String> res = info.getListTable();
-		System.out.println("****getMapperInfoList: "+(System.currentTimeMillis()-startTime));
+		//System.out.println("****getMapperInfoList: "+(System.currentTimeMillis()-startTime));
 		return res;
 	}
 	public boolean isTable(String table) throws Exception {

@@ -28,7 +28,7 @@ public class GenericDatabaseInfo {//implements Runnable {
 		Map<String,Object> map = new HashMap<String,Object>();
 		map.put("resourceTable", resourceTable);
 		List<Map<String,Object>> ldoc = mapper.getRows(map);
-		System.out.println("getInfo:"+ldoc);
+		//System.out.println("getInfo:"+ldoc);
 		for(Map<String,Object> doc:ldoc){
 			String type,tableName,finalTable,resolver,fields,keys,sep;
 			if (columnNamesInUpperCase){
@@ -58,7 +58,7 @@ public class GenericDatabaseInfo {//implements Runnable {
 			res+=isNotNull(sep)?"|"+sep:"";
 			res+="\n";
 		}
-		System.out.println("GET_INFO:"+res);
+		//System.out.println("GET_INFO:"+res);
 		return res;
 	}
 	
@@ -85,7 +85,7 @@ public class GenericDatabaseInfo {//implements Runnable {
 				res+="|"+secInfo+"\n";
 			}
 		}
-		System.out.println("GET_SECURITY:"+res);
+		//System.out.println("GET_SECURITY:"+res);
 		return res;
 	}
 	
@@ -96,6 +96,7 @@ public class GenericDatabaseInfo {//implements Runnable {
 	private String getType(String type){
 		if (type.equals("FUNCTION")) return "=";
 		else if (type.equals("PROCEDURE")) return "^";
+		else if (type.equals("SQL")) return "&";
 		else return type;
 	}
 	

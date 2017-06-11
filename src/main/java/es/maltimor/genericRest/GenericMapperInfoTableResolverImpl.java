@@ -1,5 +1,6 @@
 package es.maltimor.genericRest;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -7,7 +8,7 @@ import javax.ws.rs.core.UriInfo;
 
 import es.maltimor.genericUser.User;
 
-public class GenericMapperInfoTableResolverImpl implements GenericMapperInfoTableResolver {
+public class GenericMapperInfoTableResolverImpl implements GenericMapperInfoTableResolver,GenericTableResolverTestParams {
 
 	public String getSQL(User user, String table) {
 		return "SELECT * FROM "+table;
@@ -37,8 +38,8 @@ public class GenericMapperInfoTableResolverImpl implements GenericMapperInfoTabl
 				if (column.getType().equals("S")) colValues+=column.getSecuenceName()+".nextVal";		//caso de numero de secuencia  
 				else {
 					colValues+="#{data."+key;
-					if (column.getType().equals("BLOB")) colValues+=",jdbcType=BLOB";
-					else if (column.getType().equals("CLOB"))colValues+=",jdbcType=CLOB";
+					if (column.getType().equals("B")) colValues+=",jdbcType=BLOB";
+					else if (column.getType().equals("C"))colValues+=",jdbcType=CLOB";
 					colValues+="}";
 				}
 				first=false;
@@ -46,7 +47,7 @@ public class GenericMapperInfoTableResolverImpl implements GenericMapperInfoTabl
 		}
 		
 		String sql = "INSERT INTO "+table+"("+colNames+") VALUES ("+colValues+")";
-		System.out.println(sql);
+		//System.out.println(sql);
 		return sql;
 	}
 	
@@ -62,8 +63,8 @@ public class GenericMapperInfoTableResolverImpl implements GenericMapperInfoTabl
 			if (data.containsKey(key)){
 				if (!firstSet) colSets+=",";
 				colSets+=key+"=#{data."+key;
-				if (column.getType().equals("BLOB")) colSets+=",jdbcType=BLOB";
-				else if (column.getType().equals("CLOB"))colSets+=",jdbcType=CLOB";
+				if (column.getType().equals("B")) colSets+=",jdbcType=BLOB";
+				else if (column.getType().equals("C"))colSets+=",jdbcType=CLOB";
 				colSets+="}";
 				firstSet=false;
 			}
@@ -97,6 +98,11 @@ public class GenericMapperInfoTableResolverImpl implements GenericMapperInfoTabl
 	public String getExecute(User user, String table, GenericMapperInfoTable info, Map<String, Object> data) {
 		//UNA TABLA DE ESTE TIPO NO TIENE EXECUTE
 		return null;
+	}
+
+	public Map<String, Object> getTestParams(String table) {
+		//POR DEFECTO NO DEVUELVE PARAMETROS
+		return new HashMap<String,Object>();
 	}
 	
 }

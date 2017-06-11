@@ -1,10 +1,15 @@
 package es.maltimor.genericRest.resolvers;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import javax.ws.rs.core.UriInfo;
+
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import es.maltimor.genericRest.GenericMapperInfoColumn;
 import es.maltimor.genericRest.GenericMapperInfoTable;
@@ -16,7 +21,28 @@ public class BasicDatabaseResolver extends GenericMapperInfoTableResolverImpl {
 	private BasicDatabaseMapper mapper;
 	private String resourceTable;
 	private boolean columnNamesInUpperCase=true;
-	
+
+	@Override
+	public Map<String, Object> getTestParams(String table) {
+		Map<String,Object> map=new HashMap<String,Object>();
+		map.put("resourceTable", resourceTable);
+		map.put("table", table);
+		String fieldName = columnNamesInUpperCase?"TEST_PARAMS":"test_params";
+		List<Map<String,Object>> ldoc=mapper.getSQL(map);
+		if (ldoc.size()>0&&isNotNull(ldoc.get(0).get(fieldName))){
+			String test_params = (String) ldoc.get(0).get(fieldName);
+			ObjectMapper mapper = new ObjectMapper();
+			//inicializo el mapa y si da error no hago caso
+			map=new HashMap<String,Object>();
+			try {
+				map = mapper.readValue(test_params, map.getClass());
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+			return map;
+		} else return super.getTestParams(table);
+	}
+
 	public String getTestSQL(String table) {
 		Map<String,Object> map=new HashMap<String,Object>();
 		map.put("resourceTable", resourceTable);
@@ -87,7 +113,7 @@ public class BasicDatabaseResolver extends GenericMapperInfoTableResolverImpl {
 
 	public String getExecute(User user, String table, GenericMapperInfoTable info, Map<String, Object> data) {
 		//SI LA TABLA ES DEL TIPO FUNCION/PROCEDURE (o lo que es lo mismo <>null)
-		System.out.println("GET_EXECUTE_RESOLVER:"+table);
+		//System.out.println("GET_EXECUTE_RESOLVER:"+table);
 		Map<String,Object> map=new HashMap<String,Object>();
 		map.put("resourceTable", resourceTable);
 		map.put("table", table);
@@ -97,11 +123,11 @@ public class BasicDatabaseResolver extends GenericMapperInfoTableResolverImpl {
 		if (ldoc.size()>0){
 			Map<String,Object> doc=ldoc.get(0);
 			if (isNotNull(doc.get(typeName))){
-				System.out.println("EJECUTAR:"+doc.get(fieldName));
+				//System.out.println("EJECUTAR:"+doc.get(fieldName));
 				return (String) doc.get(fieldName);
 			}
 		}
-		System.out.println("NO HAY DATOS");
+		//System.out.println("NO HAY DATOS");
 		return super.getExecute(user, table, info, data);
 	}
 	

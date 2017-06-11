@@ -10,7 +10,7 @@ public class BasicDatabaseMapperProvider {
 		String resourceTable = (String) params.get("resourceTable");
 		String table = (String) params.get("table");
 		String res = "SELECT * FROM "+resourceTable+" WHERE TABLE_NAME='"+table+"'";
-		System.out.println("BASIC_DATABASEMAPPER:"+res);
+		//System.out.println("BASIC_DATABASEMAPPER:"+res);
 		return res;
 	}
 }

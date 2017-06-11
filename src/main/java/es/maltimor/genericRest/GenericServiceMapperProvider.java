@@ -91,7 +91,7 @@ public class GenericServiceMapperProvider {
 			}
 		}
 		for(int i=0;i<fields.size();i++){
-			System.out.println("FIELD["+i+"]="+fields.get(i)+"|"+types.get(i)+"|");
+			//System.out.println("FIELD["+i+"]="+fields.get(i)+"|"+types.get(i)+"|");
 		}
 
 		String filter = (String) params.get("filter");
@@ -190,7 +190,7 @@ public class GenericServiceMapperProvider {
 		}
 		
 		log.debug("### getAll:"+sql);
-		System.out.println("LLAMADA SQL: "+sql);
+		//System.out.println("LLAMADA SQL: "+sql);
 		return sql;
 	}
 
@@ -282,7 +282,7 @@ public class GenericServiceMapperProvider {
 		GenericMapperInfoTableResolver resolver = info.getResolver();
 		Map<String, Object> map = (Map<String, Object>) params.get("data");
 		
-		System.out.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ UPDATE");
+		//System.out.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ UPDATE");
 		
 		splitKeys(params,info,id);
 
@@ -341,7 +341,7 @@ public class GenericServiceMapperProvider {
 	public String getSecuenceValue(String secuence){
 		//String secuence = (String) params.get("secuence");
 		String res = "SELECT "+secuence+".CURRVAL AS VALUE FROM DUAL";
-		System.out.println("SECUENCE:"+secuence);
+		//System.out.println("SECUENCE:"+secuence);
 		return res;
 	}
 	
@@ -369,12 +369,12 @@ public class GenericServiceMapperProvider {
 			types.put(column.getName().toLowerCase(), column.getType());
 		}*/
 		
-		System.out.println("### TRATA TIPO:"+keyIn+" -> "+keyOut);
+		//System.out.println("### TRATA TIPO:"+keyIn+" -> "+keyOut);
 		
 		
 		Map<String,String> types = table.getTypes();
 		
-		System.out.println("### TRATA TIPO: tipo:"+types.get(keyIn.toLowerCase()));
+		//System.out.println("### TRATA TIPO: tipo:"+types.get(keyIn.toLowerCase()));
 		
 		String type=types.get(keyIn.toLowerCase());
 		if (type.equals("T")) {
@@ -386,7 +386,7 @@ public class GenericServiceMapperProvider {
 			}
 		} else if (type.equals("F")|type.equals("D")) {
 			try {
-				System.out.println("### TRATA TIPO: TODATE");
+				//System.out.println("### TRATA TIPO: TODATE");
 				
 				MapperUtils.toDate(map, keyOut);
 			} catch (Exception e) {
@@ -466,7 +466,7 @@ public class GenericServiceMapperProvider {
 		int TYPE_DATE = 3;
 
 		for(String cad:lst){
-			System.out.println("*"+cad);
+			//System.out.println("*"+cad);
 			//por defecto el tipo de datos es texto
 			int type=TYPE_TEXT;
 			if (cad.startsWith("[")){
@@ -506,7 +506,7 @@ public class GenericServiceMapperProvider {
 				            formatoFecha.setLenient(false);
 				            //formatoFecha.parse(valor);
 				        } catch (Exception e) {
-							System.out.println("Fecha NO valida:"+valor);
+							//System.out.println("Fecha NO valida:"+valor);
 				        	valor="";
 				        }
 					}
@@ -619,7 +619,7 @@ public class GenericServiceMapperProvider {
 			}
 			//System.out.println(cad);
 		}
-		System.out.println("SQLUTILS:"+res);
+		//System.out.println("SQLUTILS:"+res);
 		return res;
 	}
 }

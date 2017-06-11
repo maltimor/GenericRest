@@ -7,7 +7,7 @@ public class GenericDatabaseMapperProvider {
 	public String getRows(Map<String,Object> params){
 		String resourceTable = (String) params.get("resourceTable");
 		String res = "SELECT * FROM "+resourceTable;
-		System.out.println("DATABASEMAPPER:"+res);
+		//System.out.println("DATABASEMAPPER:"+res);
 		return res;
 	}
 }

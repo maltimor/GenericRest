@@ -7,10 +7,15 @@ import java.util.Map;
 import org.apache.ibatis.annotations.DeleteProvider;
 import org.apache.ibatis.annotations.InsertProvider;
 import org.apache.ibatis.annotations.Options;
+import org.apache.ibatis.annotations.Result;
+import org.apache.ibatis.annotations.ResultMap;
+import org.apache.ibatis.annotations.Results;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.SelectProvider;
 import org.apache.ibatis.annotations.UpdateProvider;
 import org.apache.ibatis.mapping.StatementType;
+import org.apache.ibatis.type.ArrayTypeHandler;
+import org.apache.ibatis.type.JdbcType;
 
 public interface GenericServiceMapper {
 	@Select("Select * FROM dual")	
@@ -58,6 +63,12 @@ public interface GenericServiceMapper {
 	@SelectProvider(type=es.maltimor.genericRest.GenericServiceMapperProvider.class, method="execute")
 	@Options(statementType = StatementType.CALLABLE)
 	public Object execute(Map<String,Object> params);
+
+	@SelectProvider(type=es.maltimor.genericRest.GenericServiceMapperProvider.class, method="execute")
+	@Options(resultSets="a,b,c")
+//	@Results({@Result(property="KK",column="KK",jdbcType=JdbcType.CURSOR,javaType=List.class,typeHandler=GenericResultsetTypeHandler.class)})
+//	@Results({@Result(property="KK",column="KK")})
+	public List<Map<String,Object>> executeSQL(Map<String,Object> params);
 
 	//@Param("user") User user,@Param("table") String table,@Param("info") GenericCrudMapperInfoTable info,@Param("data") Map<String, Object> data);
 	@SelectProvider(type=es.maltimor.genericRest.GenericServiceMapperProvider.class, method="getSecuenceValue")
