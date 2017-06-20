@@ -1,4 +1,6 @@
-# GenericRest. Version 1.0.0
+[![GitHub release](https://img.shields.io/github/release/maltimor/GenericRest.svg)]()
+
+# GenericRest.
 Autor: Andrés García Meroño
 
 Fecha: 20/10/2016
