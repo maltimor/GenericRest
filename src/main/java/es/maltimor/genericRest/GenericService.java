@@ -82,7 +82,7 @@ public class GenericService {
 			return Response.ok(res).build();
 		} catch (Exception e) {
 			e.printStackTrace();
-			return Response.serverError().entity(e.getMessage()).build();
+			return Response.serverError().type("text/html").entity(e.getMessage()).build();
 		}
 	}
 
@@ -96,7 +96,7 @@ public class GenericService {
 			return Response.ok(res).build();
 		} catch (Exception e) {
 			e.printStackTrace();
-			return Response.serverError().entity(e.getMessage()).build();
+			return Response.serverError().type("text/html").entity(e.getMessage()).build();
 		}
 	}
 
@@ -110,19 +110,19 @@ public class GenericService {
 			//comprobar que exista
 			if (!service.isTable(table)){
 				System.out.println("---- no EXISTE");
-				return Response.status(HttpServletResponse.SC_NOT_FOUND).entity("No existe el proceso").build();
+				return Response.status(HttpServletResponse.SC_NOT_FOUND).type("text/html").entity("No existe el proceso").build();
 			}
 			//comprobar la seguridad
 			User user = userDao.getUser(userDao.getLogin(), app);
 			GenericMapperInfoTable t = service.getMapperInfoTable(user, table);
 			if (!t.isSelectable()){
 				System.out.println("---- no PROCEDE");
-				return Response.status(HttpServletResponse.SC_NOT_FOUND).entity("No existe el proceso").build();
+				return Response.status(HttpServletResponse.SC_NOT_FOUND).type("text/html").entity("No existe el proceso").build();
 			}
 
 			if (!securityDao.canSelect(user, table, filter, ui)){
 				System.out.println("---- no tiene permisos");
-				return Response.status(HttpServletResponse.SC_UNAUTHORIZED).entity("No tiene permisos").build();
+				return Response.status(HttpServletResponse.SC_UNAUTHORIZED).type("text/html").entity("No tiene permisos").build();
 			}
 			
 			long size = service.cntAll(user,table,filter,ui);
@@ -130,7 +130,7 @@ public class GenericService {
 			return Response.status(200).entity("{\"count\":"+size+"}").build();
 		} catch (Exception e) {
 			e.printStackTrace();
-			return Response.serverError().entity(e.getMessage()).build();
+			return Response.serverError().type("text/html").entity(e.getMessage()).build();
 		}
 	}
 	
@@ -153,25 +153,25 @@ public class GenericService {
 			//comprobar que exista
 			if (!service.isTable(table)){
 				System.out.println("---- no EXISTE");
-				return Response.status(HttpServletResponse.SC_NOT_FOUND).entity("No existe el proceso").build();
+				return Response.status(HttpServletResponse.SC_NOT_FOUND).type("text/html").entity("No existe el proceso").build();
 			}
 			//comprobar la seguridad y que proceda
 			User user = userDao.getUser(userDao.getLogin(), app);
 			GenericMapperInfoTable t = service.getMapperInfoTable(user, table);
 			if (!t.isSelectable()){
 				System.out.println("---- no PROCEDE");
-				return Response.status(HttpServletResponse.SC_NOT_FOUND).entity("No existe el proceso").build();
+				return Response.status(HttpServletResponse.SC_NOT_FOUND).type("text/html").entity("No existe el proceso").build();
 			}
 
 			if (!securityDao.canSelect(user, table, filter, ui)){
 				System.out.println("---- no tiene permisos");
-				return Response.status(HttpServletResponse.SC_UNAUTHORIZED).entity("No tiene permisos").build();
+				return Response.status(HttpServletResponse.SC_UNAUTHORIZED).type("text/html").entity("No tiene permisos").build();
 			}
 			List<Map<String,Object>> data = service.getAll(user,table,filter,limit,offset,orderby,order,fields,ui);
 			return getResponseData(data,format,getFieldList(t,fields));
 		} catch (Exception e) {
 			e.printStackTrace();
-			return Response.serverError().entity(e.getMessage()).build();
+			return Response.serverError().type("text/html").entity(e.getMessage()).build();
 		}
 	}
 
@@ -189,26 +189,26 @@ public class GenericService {
 			//comprobar que exista
 			if (!service.isTable(table)){
 				System.out.println("---- no EXISTE");
-				return Response.status(HttpServletResponse.SC_NOT_FOUND).entity("No existe el proceso").build();
+				return Response.status(HttpServletResponse.SC_NOT_FOUND).type("text/html").entity("No existe el proceso").build();
 			}
 			//comprobar la seguridad y que proceda
 			User user = userDao.getUser(userDao.getLogin(), app);
 			GenericMapperInfoTable t = service.getMapperInfoTable(user, table);
 			if (!t.isSelectable()){
 				System.out.println("---- no PROCEDE");
-				return Response.status(HttpServletResponse.SC_NOT_FOUND).entity("No existe el proceso").build();
+				return Response.status(HttpServletResponse.SC_NOT_FOUND).type("text/html").entity("No existe el proceso").build();
 			}
 
 			if (!securityDao.canGetById(user, table, id, ui)){
 				System.out.println("---- no tiene permisos");
-				return Response.status(HttpServletResponse.SC_UNAUTHORIZED).entity("No tiene permisos").build();
+				return Response.status(HttpServletResponse.SC_UNAUTHORIZED).type("text/html").entity("No tiene permisos").build();
 			}
 
 			Map<String,Object> data = service.getById(user,table,id,ui);
 			return getResponseData(data,format,getFieldList(t, fields));
 		} catch (Exception e) {
 			e.printStackTrace();
-			return Response.serverError().entity(e.getMessage()).build();
+			return Response.serverError().type("text/html").entity(e.getMessage()).build();
 		}
 	}
 	
@@ -226,7 +226,7 @@ public class GenericService {
 			//comprobar que exista
 			if (!service.isTable(table)){
 				System.out.println("---- no EXISTE");
-				return Response.status(HttpServletResponse.SC_NOT_FOUND).entity("No existe el proceso").build();
+				return Response.status(HttpServletResponse.SC_NOT_FOUND).type("text/html").entity("No existe el proceso").build();
 			}
 			//comprobar la seguridad
 			User user = userDao.getUser(userDao.getLogin(), app);
@@ -234,7 +234,7 @@ public class GenericService {
 			if ((t.isSelectable() && (!securityDao.canInsert(user, table, data, ui)))
 				||(!t.isSelectable() && (!securityDao.canExecute(user, table, data, ui)))){
 				System.out.println("---- no tiene permisos");
-				return Response.status(HttpServletResponse.SC_UNAUTHORIZED).entity("No tiene permisos").build();
+				return Response.status(HttpServletResponse.SC_UNAUTHORIZED).type("text/html").entity("No tiene permisos").build();
 			}
 
 			//Aqui determino si hay que hacer un insert o un update
@@ -242,7 +242,7 @@ public class GenericService {
 				if (service.insert(user,table,data,ui)){
 					return Response.ok(data).build();
 				} else {
-					return Response.serverError().entity("Error: No se ha podido insertar.").build();
+					return Response.serverError().type("text/html").entity("Error: No se ha podido insertar.").build();
 				}
 			} else {	//caso de funcion o procedure: execute
 				Object res = service.execute(user, table, data, ui);
@@ -250,7 +250,7 @@ public class GenericService {
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
-			return Response.serverError().entity(e.getMessage()).build();
+			return Response.serverError().type("text/html").entity(e.getMessage()).build();
 		}
 	}
 	
@@ -264,29 +264,29 @@ public class GenericService {
 			//comprobar que exista
 			if (!service.isTable(table)){
 				System.out.println("---- no EXISTE");
-				return Response.status(HttpServletResponse.SC_NOT_FOUND).entity("No existe el proceso").build();
+				return Response.status(HttpServletResponse.SC_NOT_FOUND).type("text/html").entity("No existe el proceso").build();
 			}
 			//comprobar la seguridad y que proceda
 			User user = userDao.getUser(userDao.getLogin(), app);
 			GenericMapperInfoTable t = service.getMapperInfoTable(user, table);
 			if (!t.isSelectable()){
 				System.out.println("---- no PROCEDE");
-				return Response.status(HttpServletResponse.SC_NOT_FOUND).entity("No existe el proceso").build();
+				return Response.status(HttpServletResponse.SC_NOT_FOUND).type("text/html").entity("No existe el proceso").build();
 			}
 
 			if (!securityDao.canDelete(user, table, id, ui)){
 				System.out.println("---- no tiene permisos");
-				return Response.status(HttpServletResponse.SC_UNAUTHORIZED).entity("No tiene permisos").build();
+				return Response.status(HttpServletResponse.SC_UNAUTHORIZED).type("text/html").entity("No tiene permisos").build();
 			}
 
 			if (service.delete(user,table,id,ui)){
 				return Response.ok().build();
 			} else {
-				return Response.serverError().entity("Error: No se ha podido eliminar.").build();
+				return Response.serverError().type("text/html").entity("Error: No se ha podido eliminar.").build();
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
-			return Response.serverError().entity(e.getMessage()).build();
+			return Response.serverError().type("text/html").entity(e.getMessage()).build();
 		}
 	}
 	
@@ -299,29 +299,29 @@ public class GenericService {
 			//comprobar que exista
 			if (!service.isTable(table)){
 				System.out.println("---- no EXISTE");
-				return Response.status(HttpServletResponse.SC_NOT_FOUND).entity("No existe el proceso").build();
+				return Response.status(HttpServletResponse.SC_NOT_FOUND).type("text/html").entity("No existe el proceso").build();
 			}
 			//comprobar la seguridad y que proceda
 			User user = userDao.getUser(userDao.getLogin(), app);
 			GenericMapperInfoTable t = service.getMapperInfoTable(user, table);
 			if (!t.isSelectable()){
 				System.out.println("---- no PROCEDE");
-				return Response.status(HttpServletResponse.SC_NOT_FOUND).entity("No existe el proceso").build();
+				return Response.status(HttpServletResponse.SC_NOT_FOUND).type("text/html").entity("No existe el proceso").build();
 			}
 
 			if (!securityDao.canUpdate(user, table, id, data, ui)){
 				System.out.println("---- no tiene permisos");
-				return Response.status(HttpServletResponse.SC_UNAUTHORIZED).entity("No tiene permisos").build();
+				return Response.status(HttpServletResponse.SC_UNAUTHORIZED).type("text/html").entity("No tiene permisos").build();
 			}
 
 			if (service.update(user,table,id,data,ui)){
 				return Response.ok(data).build();
 			} else {
-				return Response.serverError().entity("Error: No se ha podido actualizar.").build();
+				return Response.serverError().type("text/html").entity("Error: No se ha podido actualizar.").build();
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
-			return Response.serverError().entity(e.getMessage()).build();
+			return Response.serverError().type("text/html").entity(e.getMessage()).build();
 		}
 	}
 	
@@ -335,7 +335,7 @@ public class GenericService {
 			//comprobar que exista
 			if (!service.isTable(table)){
 				System.out.println("---- no EXISTE");
-				return Response.status(HttpServletResponse.SC_NOT_FOUND).entity("No existe el proceso").build();
+				return Response.status(HttpServletResponse.SC_NOT_FOUND).type("text/html").entity("No existe el proceso").build();
 			}
 			//comprobar la seguridad
 			User user = userDao.getUser(userDao.getLogin(), app);
@@ -352,11 +352,11 @@ public class GenericService {
 				
 				return Response.ok(tabla.toString()).build();
 			} else {
-				return Response.serverError().entity("Error: No se ha encontrado la tabla: " + table).build();
+				return Response.serverError().type("text/html").entity("Error: No se ha encontrado la tabla: " + table).build();
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
-			return Response.serverError().entity(e.getMessage()).build();
+			return Response.serverError().type("text/html").entity(e.getMessage()).build();
 		}
 	}
 	
@@ -381,11 +381,11 @@ public class GenericService {
 			if (data != null) {
 				return Response.ok(data).build();
 			} else {
-				return Response.serverError().entity("Error: No se han definido tablas. ").build();
+				return Response.serverError().type("text/html").entity("Error: No se han definido tablas. ").build();
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
-			return Response.serverError().entity(e.getMessage()).build();
+			return Response.serverError().type("text/html").entity(e.getMessage()).build();
 		}
 	}
 	
@@ -435,7 +435,7 @@ public class GenericService {
 		else if (format.equals("CSV")) return Response.ok(out,"text/csv; charset=utf-8; name=exec.xls").header("Content-Disposition","inline;filename=exec.csv").build();
 		else if (format.equals("HTML")) return Response.ok(out,"text/html; charset=utf-8").build();
 		else if (format.equals("TXT")) return Response.ok(out,"text/plain; charset=utf-8").build();
-		else return Response.serverError().entity("Formato no soportado").build();
+		else return Response.serverError().type("text/html").entity("Formato no soportado").build();
 	}
 
 	//fields,decorator

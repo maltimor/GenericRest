@@ -424,6 +424,14 @@ public class GenericServiceMapperProvider {
 		return sql;
 	}
 	
+	//filtra la cadena eliminando todos los caracteres de control de MyBatis
+	//{}'"
+	//TODO ver si elimino $ # 
+	//TODO ver si transformo ' por '' y si es necesario eliminar las "
+	private String filterValue(String value) {
+		return value.replace("{", "").replace("}", "").replace("'", "").replace("\"","");
+	}
+	
 	/*
 	 * cols se utiliza para obtener informacion de la columnas, sobre todo el tipo de dato, si es key y si actua en fulltext
 	 * Dado una query por url siguiendo la sintaxis:
@@ -447,6 +455,7 @@ public class GenericServiceMapperProvider {
 	 */
 	private String getQueryWhere(String text,GenericMapperInfoTable table){
 		List<String> lst = GenericFilter.parseFilter(text);
+		//System.out.println("********************* "+lst);
 		if (lst==null) return "";
 		if (lst.get(0).equals(GenericFilter.ERROR)) return "(1=0)";
 		
@@ -466,6 +475,11 @@ public class GenericServiceMapperProvider {
 		int TYPE_DATE = 3;
 
 		for(String cad:lst){
+			//aplico el filtro de manera global aqui: ahorro hacerlo muchas veces
+			//esto debería evitar el sql injection
+			cad = filterValue(cad);
+			//System.out.println("************** "+cad);
+			
 			//System.out.println("*"+cad);
 			//por defecto el tipo de datos es texto
 			int type=TYPE_TEXT;
@@ -489,16 +503,17 @@ public class GenericServiceMapperProvider {
 						else if (strType.equals("D")) type = TYPE_DATE;
 						else type = TYPE_TEXT;
 						//System.out.println("COL:"+col);
-					} else key = "#{"+key.replaceAll("\\{", "").replaceAll("\\}", "")+"}";	//evita sql injection?
+					} else key = "#{"+key+"}";	//evita sql injection?
 				}
 
 				//tengo en cuenta que por defecto todos los operadores añaden % al principio y al final
-				if (op.equals("=")) {
+				//= ==  <>  !== !=
+				if (op.equals("=")||op.equals("!=")) {
 					//si el tipo de datos es TEXT la semantica es del tipo LIKE
 					//en otro caso el = el lo mismo que ==
 					if (type==TYPE_TEXT){
-						if (!valorKey) valor = "%"+valor+"%";
-						op = " LIKE ";
+						if (!valorKey) valor = "%"+valor.replace("*", "%")+"%";
+						op = op.equals("=")? " LIKE " : " NOT LIKE ";
 					} else if (type==TYPE_DATE){
 						//comprobar que sea una fecha y si no lo es poner NULL en el campo
 						try {
@@ -511,33 +526,36 @@ public class GenericServiceMapperProvider {
 				        }
 					}
 					//aplico la transformacion a valor en funcion de su tipo de datos
-					if (!valorKey&&((type==TYPE_TEXT)||(type==TYPE_DATE))) valor = "'"+valor.replace("'","''")+"'";
-				} else if (op.equals("==")){
+					if (!valorKey&&((type==TYPE_TEXT)||(type==TYPE_DATE))) valor = "'"+valor+"'";
+				} else if (op.equals("==")||op.equals("!==")){
 					//este operador es identico a = excepto para TYPE_TEXT que permite comodines
 					if (type==TYPE_TEXT){
 						//si el valor contiene comodin, en vez de = pongo like
-						if (valor.contains("%")) op = " LIKE ";
+						if (valor.contains("%")) op = op.equals("==")? " LIKE " : " NOT LIKE ";
 						else if (valor.contains("*")){
 							valor = valor.replace("*", "%");
-							op = " LIKE ";
-						} else op = "=";
+							op = op.equals("==")? " LIKE " : " NOT LIKE ";
+						} else op = op.equals("==")? "=" : "!=";
 					} else {
 						//en cualquier otro caso, el == es lo mismo que =
-						op = "=";
+						op = op.equals("==")? "=" : "!=";
 					}
 					//aplico la transformacion a valor en funcion de su tipo de datos
-					if (!valorKey&&((type==TYPE_TEXT)||(type==TYPE_DATE))) valor = "'"+valor.replace("'","''")+"'";
+					if (!valorKey&&((type==TYPE_TEXT)||(type==TYPE_DATE))) valor = "'"+valor+"'";
 				} else if (op.equals("=>")){
 					//aplico la transformacion a valor en funcion de su tipo de datos
-					if (!valorKey) valor = "'"+valor.replace("'","''")+"'";
+					if (!valorKey) valor = "'"+valor+"'";
 				} else if (op.equals(" IS ")){
 					//para esta operacion solo se permmite NULL y NOT NULL
 					if (valor.equalsIgnoreCase("NULL") || valor.equalsIgnoreCase("NOT NULL")){
 						valor = valor.toUpperCase();
-					} else if (!valorKey) valor = "'"+valor.replace("'","''")+"'";
+					} else if (!valorKey) valor = "'"+valor+"'";
+				} else if (op.equals(" IN ")) {
+					//aplico la transformacion a valor en funcion de su tipo de datos
+					if (!valorKey&&((type==TYPE_TEXT)||(type==TYPE_DATE))) valor = "'"+valor.replace(",", "','")+"'";
 				} else {
 					//aplico la transformacion a valor en funcion de su tipo de datos
-					if (!valorKey&&((type==TYPE_TEXT)||(type==TYPE_DATE))) valor = "'"+valor.replace("'","''")+"'";
+					if (!valorKey&&((type==TYPE_TEXT)||(type==TYPE_DATE))) valor = "'"+valor+"'";
 				}
 				
 				
@@ -551,11 +569,11 @@ public class GenericServiceMapperProvider {
 						//System.out.println("**"+cd.getName()+","+cd.getType()+","+cd.isFullText()+" valor="+valor);
 						boolean valid=cd.isFullText();
 						String t=cd.getType().toUpperCase();
-						valor=(aux.length>2)? aux[2] : "";		//restablezco el valor a su posiicon original
+						valor=(aux.length>2)? aux[2] : "";		//restablezco el valor a su posicion original
 						if (valid&&t.equals("T")){
 							//no hago cuenta a los comodines, se los pongo yo por defecto por delante y por detras
 							//si el valor contiene comodin, en vez de = pongo like
-							valor = "'%"+valor.replace("'","''")+"%'";
+							valor = "'%"+valor+"%'";
 							valor = valor.toLowerCase();
 							if (driver.equals("mysql") || driver.equals("informix")){
 								res+=" OR ( LOWER("+cd.getName()+") LIKE  "+valor+" ) ";
@@ -586,7 +604,7 @@ public class GenericServiceMapperProvider {
 					//en funcion del tipo de dato se ponen ' o no
 					//hay que escapar datos
 					//TODO si col==null lo añado aqui?
-					if ((col!=null) && (op.equals(" LIKE "))) {
+					if ((col!=null) && (op.equals(" LIKE ")||op.equals(" NOT LIKE "))) {
 						if (driver.equals("mysql") || driver.equals("informix")){
 							key = "LOWER("+col.getName()+")";
 							valor = valor.toLowerCase();
@@ -605,6 +623,12 @@ public class GenericServiceMapperProvider {
 								+ " FROM TABLE(CAST(MULTISET(SELECT LEVEL FROM DUAL "
 								+ " CONNECT BY LEVEL <= LENGTH (REGEXP_REPLACE("+valor+", '[^,]+')) + 1) AS SYS.OdciNumberList)) LEVELS)";
 						res+= key+op+valor;
+					} else if (op.equals(" IN ")){
+						if (!valorKey) {
+							res+= key+op+"("+valor+")";
+						} else {
+							res+= "INSTR(','||"+valor+"||','  ,  ','||"+key+"||',')>0";
+						}
 					} else {
 						//resto de casos
 						res+= key+op+valor;
@@ -618,6 +642,7 @@ public class GenericServiceMapperProvider {
 				else if (cad.equals(")")) res += ")";
 			}
 			//System.out.println(cad);
+			//System.out.println("************** "+res);
 		}
 		//System.out.println("SQLUTILS:"+res);
 		return res;

@@ -450,6 +450,7 @@ public class GenericMapperInfo {
 		else if (tipo.equals("DATETIME")) tipo = "F";
 		else if (tipo.equals("LONG") || tipo.equals("LONG RAW") || tipo.equals("NUMBER")) tipo = "N";
 		else if (tipo.equals("DECIMAL")) tipo = "N";
+		else if (tipo.equals("NUMERIC")) tipo = "N";
 		else if (tipo.equals("INT")) tipo = "N";
 		else if (tipo.equals("DOUBLE")) tipo = "N";
 		else if (tipo.equals("CLOB")) tipo = "C";			// TODO Crear un tipo C

@@ -17,6 +17,7 @@ public class GenericFilter {
 
 		// reemplazo AND Y OR por & y |
 		text = text.replace(" AND ", "&").replace(" OR ", "|");
+		text = text.replace(" and ", "&").replace(" or ", "|");
 		//System.out.println("SEARCH=" + text);
 
 		// analizo sintacticamente la cadena
@@ -31,29 +32,26 @@ public class GenericFilter {
 		String valor = "";
 		while (pos < len) {		//TODO MAXIMO TAMAÑO DEL BUFFER!
 			char act = buff[pos];
-			// System.out.println("act="+act+" estado="+estado);
+			//System.out.println("act="+act+" estado="+estado+"|"+key+"|"+op+"|"+valor);
 			// System.out.println(estado+"|"+key+"|"+op+"|"+valor);
 			switch (estado) {
 			case 0:
 				// paso inicial
-				if (act == '[') {
+				if ("()&|".indexOf(act)>=0) {
+					//System.out.println("PUSH_"+act);
+					lst.add("" + act);
+				} else if (act == '[') {
 					estado = 1;
 					key = "";
 					valor = "";
 					op = "";
-				} else if ("]<>=&|".indexOf(act) >= 0) {
+				} else if ("]<>=!".indexOf(act) >= 0) {
 					estado = -1;
 				} else {
 					key = "NULL";
 					op = "NULL";
-					//ahora valor puede ser del tipo [key]
-					if (act=='['){
-						valor="[";
-						estado=4;
-					} else {
-						valor += act;
-						estado = 3;
-					}
+					valor = ""+act;
+					estado = 3;
 				}
 				break;
 			case 1:
@@ -66,13 +64,19 @@ public class GenericFilter {
 				break;
 			case 2:
 				// evaluando [k] -> op valor
-				if ("<>=".indexOf(act) >= 0) {
+				if ("<>=!".indexOf(act) >= 0) {
 					op += act;
 					// veo el siguiente char
 					if (pos + 1 < len) {
-						if ("<>=".indexOf(buff[pos + 1]) >= 0) {
+						if ("<>=!".indexOf(buff[pos + 1]) >= 0) {
 							pos++;
 							op += buff[pos];
+							if (pos + 1 < len) {
+								if ("<>=!".indexOf(buff[pos + 1]) >= 0) {
+									pos++;
+									op += buff[pos];
+								}
+							}
 						}
 					}
 					estado = 3;
@@ -80,10 +84,10 @@ public class GenericFilter {
 					pos+=3;//1 menos que lo necesario ya s eincrementa despues
 					op += " IS ";
 					estado = 3;
-				/*} else if (pos+4<len && text.substring(pos,pos+4).equals(" IN ")){
+				} else if (pos+4<len && text.substring(pos,pos+4).equals(" IN ")){
 					pos+=3;//1 menos que lo necesario ya s eincrementa despues
 					op += " IN ";
-					estado = 3;*/
+					estado = 3;
 				} else estado = -1;
 				break;
 			case 3:
@@ -92,23 +96,23 @@ public class GenericFilter {
 				if (act=='['){
 					estado=4;
 					valor="[";
-				} else if ("&|".indexOf(act) == -1) {
+				} else if ("&|)".indexOf(act) == -1) {
 					valor += act;
 				} else {
-					//act=& o |
-					// System.out.println("PUSH_"+act+"= key="+key+" valor="+valor+" op="+op);
+					//act=& o | o )
+					//System.out.println("PUSH_"+act+"= key="+key+" valor="+valor+" op="+op);
 					lst.add("[" + key + "|" + op + "|" + valor);
 					lst.add("" + act);
 					valor = "";
+					key = "";
+					op = "";
 					estado = 0;
 				}
 
 				break;
 			case 4:
 				// evaluando ... [->valor]
-				if (act == ')') {
-					estado = -1;
-				} else if (act == ']') {
+				if (act == ']') {
 					estado = 3;
 				} else {
 					valor += act;
@@ -124,10 +128,11 @@ public class GenericFilter {
 			//System.out.println(GenericFilter.ERROR);
 		} else if (estado == 3) {
 			// finalizo este caso especial
-			// System.out.println("PUSH_END= key="+key+" valor="+valor+" op="+op);
+			//System.out.println("PUSH_END= key="+key+" valor="+valor+" op="+op);
 			lst.add("[" + key + "|" + op + "|" + valor);
 			estado = 0;
 		}
+		
 		return lst;
 	}
 }
