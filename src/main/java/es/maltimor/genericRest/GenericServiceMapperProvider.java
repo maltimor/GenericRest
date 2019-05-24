@@ -90,9 +90,9 @@ public class GenericServiceMapperProvider {
 				}
 			}
 		}
-		for(int i=0;i<fields.size();i++){
+		//for(int i=0;i<fields.size();i++){
 			//System.out.println("FIELD["+i+"]="+fields.get(i)+"|"+types.get(i)+"|");
-		}
+		//}
 
 		String filter = (String) params.get("filter");
 		String orderby = (String) params.get("orderby");
@@ -112,7 +112,7 @@ public class GenericServiceMapperProvider {
 			String[] ordersby=orderby.split(",");
 			String[] orders=order.split(",");
 			if (ordersby.length!=orders.length) throw new Exception("Diferente tamaño en la lista de ordenacion:"+orderby+"-"+order);
-			for(String oby:ordersby) if (!fields.contains(oby)) throw new Exception("No se puede ordenar por "+oby);
+			for(String oby:ordersby) if (!fields.contains(oby)) throw new Exception("No se puede ordenar por "+oby+" : "+fields+" : "+ordersby);
 			for(String o:orders) if (!"ASC,DESC".contains(o)) throw new Exception("Parametro order incorrecto.");
 			//llegado aqui me he asegurado que los datos son correctos: reconstruyo la clausula order
 			orderClause="";

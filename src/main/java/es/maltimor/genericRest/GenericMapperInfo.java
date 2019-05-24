@@ -25,6 +25,10 @@ import org.apache.ibatis.session.SqlSession;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.springframework.context.ApplicationContext;
 
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import es.maltimor.genericUser.User;
 import es.maltimor.springUtils.ContextAware;
 import es.maltimor.webUtils.JDBCBridge;
@@ -50,7 +54,12 @@ public class GenericMapperInfo {
 	//mapper para ralizar el test de comprobacion y de metadatos
 	private GenericMapperInfoMapper mapper;
 	private SqlSessionFactory sqlSessionFactory;
-
+	
+	//cache de objetos mapperinfo
+	
+	
+	
+	
 	public SqlSessionFactory getSqlSessionFactory() {
 		return sqlSessionFactory;
 	}
@@ -208,6 +217,8 @@ public class GenericMapperInfo {
 		boolean lanzaExcepcion=false;
 		String mensajesExcepcion="";
 		
+		long ini = System.currentTimeMillis();
+		
 		////		
 		for (GenericMapperInfoTable table : data.values()) {
 			//LOS CASOS ESPECIALES DE FUNCION Y PROCEDURE SE OMITEN
@@ -241,7 +252,20 @@ public class GenericMapperInfo {
 				if (resolver instanceof GenericTableResolverTestParams){
 					GenericTableResolverTestParams presolver = (GenericTableResolverTestParams) resolver;
 					params = presolver.getTestParams(table.getTable());
-					//System.out.println("* PARAMS:"+params);
+					if (params!=null && params.size()>0){
+						System.out.println("* PARAMS:"+params);
+						System.out.println("* SQL:"+sql);
+						//otra forma de hacer test es tratando los parametros #{} como un string y sustituyendo en params
+						for(String key:params.keySet()){
+							Object value = params.get(key);
+							if (value!=null){
+								String search = "#{"+key+"}";
+								String replace = ""+value;
+								sql=sql.replace(search, replace);
+							}
+						}
+						System.out.println("* SQL END:"+sql);
+					}
 				}
 				params.put("sql", sql);
 				if (mapper!=null){
@@ -311,7 +335,7 @@ public class GenericMapperInfo {
 				
 				if (md==null){
 					//antigua forma de verificacion de la sentencia
-					System.out.println("---verificacion antigua-----");
+					//System.out.println("---verificacion antigua-----");
 					stmt = conn.createStatement();
 					rs = stmt.executeQuery(sql);
 					md = rs.getMetaData();
@@ -436,10 +460,20 @@ public class GenericMapperInfo {
 		}
 		//System.out.println();
 		
+		
+		/*String json = new ObjectMapper().writeValueAsString(data);
+		System.out.println("=====================================================");
+		System.out.println(json);
+		System.out.println("=====================================================");*/
+		
+		
 		if (lanzaExcepcion){
 			throw new Exception("Error GLOBAL: "+mensajesExcepcion);
 		}
 		/////////////////
+		
+		long t = System.currentTimeMillis()-ini;
+		System.out.println("Tiempo en comprobar: "+(t/1000)+" seg.");
 	}
 
 	private String convertirTipo(String tipo) {

@@ -6,6 +6,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.Consumes;
@@ -168,7 +169,7 @@ public class GenericService {
 				return Response.status(HttpServletResponse.SC_UNAUTHORIZED).type("text/html").entity("No tiene permisos").build();
 			}
 			List<Map<String,Object>> data = service.getAll(user,table,filter,limit,offset,orderby,order,fields,ui);
-			return getResponseData(data,format,getFieldList(t,fields));
+			return getResponseData(data,format,getFieldList(t,fields),getQueryMap(ui));
 		} catch (Exception e) {
 			e.printStackTrace();
 			return Response.serverError().type("text/html").entity(e.getMessage()).build();
@@ -205,7 +206,7 @@ public class GenericService {
 			}
 
 			Map<String,Object> data = service.getById(user,table,id,ui);
-			return getResponseData(data,format,getFieldList(t, fields));
+			return getResponseData(data,format,getFieldList(t, fields),getQueryMap(ui));
 		} catch (Exception e) {
 			e.printStackTrace();
 			return Response.serverError().type("text/html").entity(e.getMessage()).build();
@@ -246,7 +247,7 @@ public class GenericService {
 				}
 			} else {	//caso de funcion o procedure: execute
 				Object res = service.execute(user, table, data, ui);
-				return getResponseData(res,format,getFieldList(t, fields));
+				return getResponseData(res,format,getFieldList(t, fields),getQueryMap(ui));
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -406,7 +407,24 @@ public class GenericService {
 		return fields;
 	}
 	
-	private Response getResponseData(Object odata,String format,List<String> fieldList){
+	private Map<String,String> getQueryMap(UriInfo ui){
+		//System.out.println("*********************");
+		Map<String,String> query = new HashMap<String,String>();
+		if (ui!=null){
+			for(Entry<String, List<String>> e:ui.getQueryParameters().entrySet()){
+				//System.out.print(e.getKey()+"=");
+				for(String s:e.getValue()) {
+					//System.out.print(s+",");
+					query.put(e.getKey(),s);
+				}
+				//System.out.println();
+			}
+		}
+		//System.out.println("*********************");
+		return query;
+	}
+	
+	private Response getResponseData(Object odata,String format,List<String> fieldList,Map<String,String> params){
 		//si los datos no se pueden mapear a list<map> no hago caso a format
 		//transformo los datos
 		List<Map<String,Object>> data=null;
@@ -420,10 +438,10 @@ public class GenericService {
 		if (format.equals("JSON")) return Response.ok(odata).build();
 		
 		ExportableData export = null;
-		if (format.equals("XLS")) export = new ExportExcel(fieldList);
-		else if (format.equals("HTML")) export = new ExportHTML(fieldList);
-		else if (format.equals("CSV")) export = new ExportTXT(fieldList);
-		else if (format.equals("TXT")) export = new ExportTXT(fieldList);
+		if (format.equals("XLS")) export = new ExportExcel(fieldList,params);
+		else if (format.equals("HTML")) export = new ExportHTML(fieldList,params);
+		else if (format.equals("CSV")) export = new ExportTXT(fieldList,params);
+		else if (format.equals("TXT")) export = new ExportTXT(fieldList,params);
 
 		export.doHead();
 		export.doBody(data);
