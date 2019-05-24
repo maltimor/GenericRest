@@ -46,6 +46,8 @@ En el caso de un procedure o función SELECT_VALUE es el campo donde se almacena
 
 * SELECT_FILTER: Permite modificar la cláusula SELECT_VALUE de un servicio tipo CRUD con datos dinámicos en tiempo de ejecución, es decir, permite modificar los datos que devuelve el servicio en función del usuario que lo ejecuta. Aquí es normal utilizar la sintaxis de Mybatis para acceder a los metadatos del usuario.
 
+* TEST_PARAMS: campo Json que define los parametros de sustitución durante la etapa TestSQL en el caso de que el campo SELECT_VALUE contenga elementos con la notación #{...}. Los parametros de sustitución son del tipo key:valor, por ejemplo si en SELECT_VALUE se escribe #{data.CAMPO} en TEST_PARAMS debe haber { .... "data.CAMPO":"'valor'"....} . La sustitución es literal, de manera que el campo SELECT_VALUE se pueda ejecutar.
+
 ## Servicios que despliega
 
 Hay tres tipos de servicios: CRUD, PROCEDURE y FUNCTION, dependiendo del tipo de servicio la configuración REST variará y las operaciones que muestra son diferentes.
@@ -96,6 +98,11 @@ QueryParams:
   
   - format: formato de salida de los datos (JSON, XLS, CSV, HTML, TXT). Por defecto JSON.
   
+  - Según el tipo de exportación (excepto JSON) se pueden introducir mas parámetros
+  
+    - alias: permite definir un alias al nombre de las columnas (todas las exportaciones)
+    - separator: define el carácter de separación de los campos (CSV y TXT)
+    
   - ReturnData: dependiendo del valor de format cambia el content-type:
   
   - JSON: un array con el resultSet asociado a la consulta.
